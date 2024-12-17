@@ -4,13 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime"
 	"time"
 )
 
 var Level slog.Level = slog.LevelDebug
 
+// SpanGroupName is the group name used for span attributes.
 var SpanGroupName string = "span"
+
+// TraceIDName is the key name used for trace ID.
 var TraceIDName string = "trace"
+
+// SkipSource is a flag that disables source logging.
+var SkipSource bool
 
 var customLogger = slog.Default()
 
@@ -33,6 +40,19 @@ type Span struct {
 	sid     string
 	args    []any
 	started time.Time
+}
+
+func callerPtr(skip int) string {
+	if SkipSource {
+		return ""
+	}
+
+	_, file, line, ok := runtime.Caller(skip)
+	if !ok {
+		return ""
+	}
+
+	return file + ":" + fmt.Sprint(line)
 }
 
 func StartContext(ctx context.Context, name string, args ...any) (*Span, context.Context) {
@@ -63,9 +83,12 @@ func StartContext(ctx context.Context, name string, args ...any) (*Span, context
 
 	logger().With(
 		slog.Group(SpanGroupName,
+			// keep the order of name, id, trace_id
 			slog.String("name", name),
-			slog.String(TraceIDName, tid),
 			slog.String("id", sid),
+			slog.String(TraceIDName, tid),
+			// keep source as the last
+			slog.String(slog.SourceKey, callerPtr(2)),
 		),
 	).Log(ctx, Level, "span "+name+" started", args...)
 
@@ -79,11 +102,14 @@ func (s *Span) Event(name string, args ...any) {
 
 	logger().With(
 		slog.Group(SpanGroupName,
-			slog.String("event", name),
+			// keep the order of name, id, trace_id
 			slog.String("name", s.name),
 			slog.String("id", s.sid),
-			slog.Duration("at", time.Since(s.started)),
 			slog.String(TraceIDName, s.tid),
+			slog.String("event", name),
+			slog.Duration("at", time.Since(s.started)),
+			// keep source as the last
+			slog.String(slog.SourceKey, callerPtr(2)),
 		),
 	).Log(s.ctx, Level, "span "+s.name+" event "+name, args...)
 }
@@ -95,10 +121,13 @@ func (s *Span) End() {
 
 	logger().With(
 		slog.Group(SpanGroupName,
+			// keep the order of name, id, trace_id
 			slog.String("name", s.name),
 			slog.String("id", s.sid),
 			slog.String(TraceIDName, s.tid),
 			slog.Duration("dur", time.Since(s.started)),
+			// keep source as the last
+			slog.String(slog.SourceKey, callerPtr(2)),
 		),
 	).Log(s.ctx, Level, fmt.Sprintf("span %s finished in %v", s.name, time.Since(s.started)))
 }

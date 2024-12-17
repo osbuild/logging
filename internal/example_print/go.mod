@@ -1,7 +1,7 @@
-module github.com/lzap/strc/internal/example_print
+module github.com/osbuild/logging/internal/example_print
 
 go 1.23.3
 
-replace github.com/lzap/strc => ../..
+replace github.com/osbuild/logging => ../..
 
-require github.com/lzap/strc v0.0.0-00010101000000-000000000000
+require github.com/osbuild/logging v0.0.0-00010101000000-000000000000

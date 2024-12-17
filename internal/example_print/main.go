@@ -4,12 +4,14 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/lzap/strc"
+	"github.com/osbuild/logging/pkg/strc"
 )
 
 func subProcess(ctx context.Context) {
 	span, ctx := strc.StartContext(ctx, "subProcess")
 	defer span.End()
+
+	span.Event("an event")
 }
 
 func process(ctx context.Context) {
