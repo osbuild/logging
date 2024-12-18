@@ -36,8 +36,8 @@ func main() {
 	log := slog.New(h)
 
 	log.Debug("message", "k1", "v1")
-	for i := 0; i < 1000; i++ {
-		log.WithGroup("g1").With("k1", "v1").Debug("message", "k2", "v2")
+	for i := 0; i < 2000; i++ {
+		log.WithGroup("g1").With("k1", "v1").Debug("a very very very very very very long message", "k2", "v2")
 	}
 	log.WithGroup("g1").With("k1", "v1").Debug("message", "k2", "v2")
 	h.Flush()

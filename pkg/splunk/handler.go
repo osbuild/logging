@@ -45,19 +45,20 @@ func NewSplunkHandler(ctx context.Context, level slog.Level, url, token, source,
 }
 
 // Flush flushes all pending payloads to the Splunk client. This is done automatically and it is not necessary
-// to call this method unless you want to force the flush manually (e.g. in an unit test).
+// to call this method unless you want to force the flush manually (e.g. in an unit test). Calling this method
+// does not guarantee immediate delivery of the payloads to the Splunk instance.
 func (h *SplunkHandler) Flush() {
 	h.splunk.flush()
 }
 
 // Close flushes all pending payloads and closes the Splunk client. Sending new logs after
-// closing the handler will return ErrFullOrClosed.
+// closing the handler will return ErrFullOrClosed. The call can block but not longer than 2 seconds.
 func (h *SplunkHandler) Close() {
 	h.splunk.close()
 }
 
 func (h *SplunkHandler) Write(buf []byte) (int, error) {
-	return len(buf), h.splunk.event(buf)
+	return h.splunk.event(buf)
 }
 
 func (h *SplunkHandler) Enabled(ctx context.Context, level slog.Level) bool {

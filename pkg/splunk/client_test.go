@@ -24,7 +24,7 @@ func decodeBody(t *testing.T, r *http.Request) map[string]any {
 func TestSplunkLoggerRetry(t *testing.T) {
 	var internalErrorOnce sync.Once
 	ch := make(chan bool)
-	time.AfterFunc(time.Second*10, func() {
+	time.AfterFunc(time.Second*8, func() {
 		ch <- false
 	})
 
@@ -42,11 +42,11 @@ func TestSplunkLoggerRetry(t *testing.T) {
 		m := decodeBody(t, r)
 		want := map[string]any{
 			"time": 0,
-			"host": "test-host",
+			"host": "hostname",
 			"event": map[string]any{
-				"message": "message",
-				"ident":   "image-builder",
-				"host":    "test-host",
+				"message": map[string]any{},
+				"ident":   "source",
+				"host":    "hostname",
 			},
 		}
 		if !reflect.DeepEqual(want, m) {
@@ -55,13 +55,13 @@ func TestSplunkLoggerRetry(t *testing.T) {
 		ch <- true
 	}))
 
-	sl := newSplunkLogger(context.Background(), srv.URL, "token", "image-builder", "test-host")
-	err := sl.event([]byte("message"))
+	sl := newSplunkLogger(context.Background(), srv.URL, "token", "source", "hostname")
+	_, err := sl.event([]byte("{}\n"))
 	if err != nil {
 		t.Error(err)
 	}
+	defer sl.close()
 
-	sl.close()
 	if !<-ch {
 		t.Error("timeout")
 	}
@@ -83,11 +83,11 @@ func TestSplunkLoggerContext(t *testing.T) {
 		m := decodeBody(t, r)
 		want := map[string]any{
 			"time": 0,
-			"host": "test-host",
+			"host": "hostname",
 			"event": map[string]any{
-				"message": "message",
-				"ident":   "image-builder",
-				"host":    "test-host",
+				"message": map[string]any{},
+				"ident":   "source",
+				"host":    "hostname",
 			},
 		}
 		if !reflect.DeepEqual(want, m) {
@@ -98,8 +98,8 @@ func TestSplunkLoggerContext(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
-	sl := newSplunkLogger(ctx, srv.URL, "token", "image-builder", "test-host")
-	err := sl.event([]byte("message"))
+	sl := newSplunkLogger(ctx, srv.URL, "token", "source", "hostname")
+	_, err := sl.event([]byte("{}\n"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -118,11 +118,11 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 		want map[string]any
 	}{
 		{
-			name: "just string",
+			name: "empty",
 			f: func() error {
-				sl := newSplunkLogger(context.Background(), url, "token", "osbuild", "hostname")
+				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname")
 				defer sl.close()
-				err := sl.event([]byte("message"))
+				_, err := sl.event([]byte("{}\n"))
 				if err != nil {
 					return err
 				}
@@ -132,18 +132,18 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 				"time": 0,
 				"host": "hostname",
 				"event": map[string]any{
-					"message": "message",
-					"ident":   "osbuild",
+					"message": map[string]any{},
+					"ident":   "source",
 					"host":    "hostname",
 				},
 			},
 		},
 		{
-			name: "some json",
+			name: "json",
 			f: func() error {
-				sl := newSplunkLogger(context.Background(), url, "token", "osbuild", "hostname")
+				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname")
 				defer sl.close()
-				err := sl.event([]byte(`{"one": 1, "message": "test"}`))
+				_, err := sl.event([]byte(`{"a": "b"}` + "\n"))
 				if err != nil {
 					return err
 				}
@@ -153,11 +153,11 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 				"time": 0,
 				"host": "hostname",
 				"event": map[string]any{
-					"message": map[string]any{
-						"message": "message",
-					},
-					"ident": "osbuild",
+					"ident": "source",
 					"host":  "hostname",
+					"message": map[string]any{
+						"a": "b",
+					},
 				},
 			},
 		},
@@ -165,7 +165,6 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wg := sync.WaitGroup{}
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Header.Get("Authorization") != "Splunk token" {
 					t.Errorf("got %v, want Splunk token", r.Header.Get("Authorization"))
@@ -175,19 +174,16 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 				}
 				m := decodeBody(t, r)
 				if !reflect.DeepEqual(tt.want, m) {
-					t.Errorf("got %v, want %v", m, tt.want)
+					t.Errorf("got %+v, want %+v", m, tt.want)
 				}
-				wg.Done()
 			}))
 			url = srv.URL
 			defer srv.Close()
 
-			wg.Add(1)
 			err := tt.f()
 			if err != nil {
 				t.Error(err)
 			}
-			wg.Wait()
 		})
 	}
 }

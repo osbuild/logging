@@ -5,24 +5,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
-	"strings"
-	"text/template"
+	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
 )
 
-var (
-	// PayloadsChannelSize is the size of the channel that holds payloads
-	PayloadsChannelSize = 1024
+const (
+	// DefaultPayloadsChannelSize is the size of the channel that holds payloads, default 1k.
+	DefaultPayloadsChannelSize = 4096
 
-	// MaximumSize is the maximum size of a payload, default is 1MB
-	MaximumSize = 1024 * 1024
+	// DefaultMaximumSize is the maximum size of the event buffer before it is flushed, default is 1MB.
+	DefaultMaximumSize = 1024 * 1024
 
-	// SendFrequency is the frequency at which payloads are sent
-	SendFrequency = 5
+	// DefaultSendFrequency is the frequency at which payloads are sent at a maximum, default 5s.
+	DefaultSendFrequency = 5 * time.Second
 )
 
 type splunkLogger struct {
@@ -32,19 +34,12 @@ type splunkLogger struct {
 	source   string
 	hostname string
 
+	payloadsChannelSize int
+	maximumSize         int
+	sendFrequency       time.Duration
+
 	payloads chan []byte
-}
-
-type splunkPayload struct {
-	Time  int64
-	Host  string
-	Event splunkEvent
-}
-
-type splunkEvent struct {
-	Message string
-	Ident   string
-	Host    string
+	active   atomic.Bool
 }
 
 func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *splunkLogger {
@@ -52,28 +47,34 @@ func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *
 	rcl.RetryWaitMin = 300 * time.Millisecond
 	rcl.RetryWaitMax = 3 * time.Second
 	rcl.RetryMax = 5
-	// TODO set rcl.Logger
+	rcl.Logger = log.New(io.Discard, "", 0)
 
 	sl := &splunkLogger{
-		client:   rcl.StandardClient(),
-		url:      url,
-		token:    token,
-		source:   source,
-		hostname: hostname,
+		client:              rcl.StandardClient(),
+		url:                 url,
+		token:               token,
+		source:              source,
+		hostname:            hostname,
+		payloadsChannelSize: DefaultPayloadsChannelSize,
+		maximumSize:         DefaultMaximumSize,
+		sendFrequency:       DefaultSendFrequency,
 	}
 
-	ticker := time.NewTicker(time.Second * SendFrequency)
-	sl.payloads = make(chan []byte, PayloadsChannelSize)
+	ticker := time.NewTicker(sl.sendFrequency)
+	sl.payloads = make(chan []byte, sl.payloadsChannelSize)
 
+	sl.active.Store(true)
 	go sl.flushPayloads(ctx, ticker.C)
 
 	return sl
 }
 
-func (sl *splunkLogger) flushPayloads(context context.Context, ticker <-chan time.Time) {
+func (sl *splunkLogger) flushPayloads(ctx context.Context, ticker <-chan time.Time) {
+	defer sl.active.Store(false)
+
 	buf := &bytes.Buffer{}
 	// pre-allocate with a 1kB tail if the soft limit is reached
-	buf.Grow(MaximumSize + 1024)
+	buf.Grow(sl.maximumSize + 1024)
 
 	sendPayloads := func() {
 		err := sl.sendPayloads(buf)
@@ -84,22 +85,24 @@ func (sl *splunkLogger) flushPayloads(context context.Context, ticker <-chan tim
 
 	for {
 		select {
-		case <-context.Done():
+		case <-ctx.Done():
 			sendPayloads()
 			return
 		case p, ok := <-sl.payloads:
+			// close call
 			if !ok {
 				sendPayloads()
 				return
 			}
 
+			// flush call
 			if len(p) == 0 {
 				sendPayloads()
 				continue
 			}
 
 			buf.Write(p)
-			if buf.Len() >= MaximumSize {
+			if buf.Len() >= sl.maximumSize {
 				sendPayloads()
 			}
 		case <-ticker:
@@ -139,75 +142,86 @@ func (sl *splunkLogger) sendPayloads(buf *bytes.Buffer) error {
 	return nil
 }
 
+// flush will cause the logger to flush the current buffer. It does not block, there is no
+// guarantee that the buffer will be flushed immediately.
 func (sl *splunkLogger) flush() {
 	sl.payloads <- []byte("")
 }
 
+// close will flush the buffer, close the channel and wait until all payloads are sent,
+// not longer than 2 seconds. It is safe to call close multiple times. After close is called
+// the client will not accept any new events, all attemtps to send new events will return
+// ErrFullOrClosed.
 func (sl *splunkLogger) close() {
 	close(sl.payloads)
+
+	returnAfter := time.Now().Add(2 * time.Second)
+	for sl.active.Load() {
+		time.Sleep(100 * time.Millisecond)
+
+		if time.Now().After(returnAfter) {
+			break
+		}
+	}
 }
 
 // ErrFullOrClosed is returned when the payloads channel is full or closed via close().
 var ErrFullOrClosed = errors.New("cannot create new splunk event: channel full or closed")
 
-var recordTemplateStr = `
-{"time": {{.Time}}, "host": "{{.Host}}", "event": {
-"message": {{.Event.Message}},
-"ident": "{{.Event.Ident}}",
-"host": "{{.Event.Host}}"}}`
+// ErrInvalidEvent is returned when the event is not a valid JSON object with a trailing newline.
+var ErrInvalidEvent = errors.New("invalid event: must be a JSON object with trailing newline")
 
-var recordTemplate = template.Must(template.New("record").Parse(recordTemplateStr))
+// an example of a Splunk event for reference and pre-allocation estimate
+var exampleRec = `{
+	"time": 1234567890,
+	"host": "hostname.example.com",
+	"event": {
+		"indent": "source-ident",
+		"host": "hostname.example.com",
+		"message": {}
+	}
+}`
 
-func (sl *splunkLogger) event(b []byte) error {
+// event will create a new event and send it to the payloads channel. It will return
+// length of the event or an error if the event is invalid or the channel is full.
+func (sl *splunkLogger) event(b []byte) (int, error) {
 	buf := &bytes.Buffer{}
-	buf.Grow(len(b) + len(recordTemplateStr))
+	buf.Grow(len(b) + len(exampleRec)*2)
 
-	// remove possible newline
+	if len(b) < 2 || b[0] != '{' || b[len(b)-2] != '}' || b[len(b)-1] != '\n' {
+		return 0, ErrInvalidEvent
+	}
+
+	// remove the trailing newline
 	if b[len(b)-1] == '\n' {
 		b = b[:len(b)-1]
 	}
 
-	if len(b) < 2 || b[0] != '{' || b[len(b)-1] != '}' {
-		// Input is string (only used in tests, no JSON quoting needed)
-		buf.Write([]byte(`"`))
-		buf.Write(b)
-		buf.Write([]byte(`"`))
-	} else {
-		// Input is JSON (append as-is)
-		buf.Write(b)
-	}
+	// Construct the event JSON. It uses Go string quoting to escape hostname and stream,
+	// it is not ideal but it is fast, simple and we only use alphanumeric characters anyway.
+	buf.WriteByte('{')
+	buf.WriteString(`"time":`)
+	buf.WriteString(strconv.FormatInt(time.Now().Unix(), 10))
+	buf.WriteByte(',')
+	buf.WriteString(`"host":`)
+	buf.WriteString(strconv.Quote(sl.hostname))
+	buf.WriteString(`,"event":{`)
+	buf.WriteString(`"ident":`)
+	buf.WriteString(strconv.Quote(sl.source))
+	buf.WriteString(`,"host":`)
+	buf.WriteString(strconv.Quote(sl.hostname))
+	buf.WriteString(`,"message":`)
+	buf.Write(b)
+	buf.WriteByte('}')
+	buf.WriteString("}\n")
 
-	msg := strings.Builder{}
-	msg.Grow(buf.Len())
-	msg.Write(buf.Bytes())
-
-	sp := splunkPayload{
-		Time: time.Now().Unix(),
-		Host: sl.hostname,
-		Event: splunkEvent{
-			Message: msg.String(),
-			Ident:   sl.source,
-			Host:    sl.hostname,
-		},
-	}
-
-	// Text template is likely faster than JSON marshalling, however, not as fast as
-	// building the string manually. I do not have time for this though and it will look
-	// a bit ugly.
-
-	buf.Truncate(0) // keep the pre-allocated capacity
-	err := recordTemplate.Execute(buf, sp)
-	if err != nil {
-		return err
-	}
-
-	payload := make([]byte, buf.Len())
-	copy(payload, buf.Bytes())
+	event := make([]byte, buf.Len())
+	copy(event, buf.Bytes())
 
 	select {
-	case sl.payloads <- payload:
+	case sl.payloads <- event:
 	default:
-		return ErrFullOrClosed
+		return 0, ErrFullOrClosed
 	}
-	return nil
+	return len(event), nil
 }
