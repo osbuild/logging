@@ -18,7 +18,6 @@ func decodeBody(t *testing.T, r *http.Request) map[string]any {
 		t.Error(err)
 	}
 	m["time"] = 0
-	t.Log(m)
 	return m
 }
 
@@ -144,7 +143,7 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 			f: func() error {
 				sl := newSplunkLogger(context.Background(), url, "token", "osbuild", "hostname")
 				defer sl.close()
-				err := sl.event([]byte("{message: \"message\"}"))
+				err := sl.event([]byte(`{"one": 1, "message": "test"}`))
 				if err != nil {
 					return err
 				}

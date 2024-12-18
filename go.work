@@ -4,4 +4,5 @@ use (
 	.
 	./internal/example_export
 	./internal/example_print
+	./internal/example_splunk
 )

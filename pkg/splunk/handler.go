@@ -2,12 +2,20 @@ package splunk
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"time"
 )
 
 var _ slog.Handler = (*SplunkHandler)(nil)
 var _ io.Writer = (*SplunkHandler)(nil)
+
+const (
+	// EventKey is the key used to group the event attributes.
+	EventKey = "event"
+)
 
 // SplunkHandler sends records to a Splunk instance as events.
 type SplunkHandler struct {
@@ -16,28 +24,40 @@ type SplunkHandler struct {
 	jh     slog.Handler
 }
 
+func replaceAttr(groups []string, a slog.Attr) slog.Attr {
+	if groups == nil && a.Key == slog.TimeKey {
+		return slog.Int64(slog.TimeKey, time.Now().Unix())
+	}
+
+	return a
+}
+
 // NewSplunkHandler creates a new SplunkHandler. It uses highly-optimized JSON handler from
 // the standard library to format the log records. The handler implements io.Writer interface
 // which is then used to stream JSON data into the Splunk client.
-func NewSplunkHandler(ctx context.Context, level slog.Level, url, token, source, hostname string) slog.Handler {
+func NewSplunkHandler(ctx context.Context, level slog.Level, url, token, source, hostname string) *SplunkHandler {
 	h := &SplunkHandler{
-		level: level,
+		level:  level,
 		splunk: newSplunkLogger(ctx, url, token, source, hostname),
 	}
-	h.jh = slog.NewJSONHandler(h, &slog.HandlerOptions{Level: level, AddSource: true})
+	h.jh = slog.NewJSONHandler(h, &slog.HandlerOptions{Level: level, AddSource: true, ReplaceAttr: replaceAttr})
 	return h
 }
 
-// Close flushes all pending payloads and closes the Splunk client. All new log records
-// will be discarded after the handler is closed.
+// Flush flushes all pending payloads to the Splunk client. This is done automatically and it is not necessary
+// to call this method unless you want to force the flush manually (e.g. in an unit test).
+func (h *SplunkHandler) Flush() {
+	h.splunk.flush()
+}
+
+// Close flushes all pending payloads and closes the Splunk client. Sending new logs after
+// closing the handler will return ErrFullOrClosed.
 func (h *SplunkHandler) Close() {
 	h.splunk.close()
 }
 
 func (h *SplunkHandler) Write(buf []byte) (int, error) {
-	h.splunk.event(buf)
-
-	return len(buf), nil
+	return len(buf), h.splunk.event(buf)
 }
 
 func (h *SplunkHandler) Enabled(ctx context.Context, level slog.Level) bool {
@@ -45,7 +65,14 @@ func (h *SplunkHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *SplunkHandler) Handle(ctx context.Context, r slog.Record) error {
-	return h.jh.Handle(ctx, r)
+	err := h.jh.Handle(ctx, r)
+
+	// Since errors are silently ignored in slog, let's make an good will attempt.
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "splunk handler error: %v\n", err)
+	}
+
+	return err
 }
 
 func (h *SplunkHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
