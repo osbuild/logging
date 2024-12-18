@@ -1,3 +1,18 @@
+## splunk
+
+A Splunk event handler for `log/slog`. Features:
+
+* Configurable URL, token, source and hostname.
+* Batching support.
+* Non-blocking flush call support.
+* Blocking close call support with a timeout.
+* Memory pool for event byte buffers.
+* Utilizes JSON handler from the standard library.
+* Built for performance (no JSON encoding or decoding).
+
+### How to use
+
+```go
 package main
 
 import (
@@ -42,3 +57,18 @@ func main() {
 		fmt.Printf("received %d batches\n", count)
 	}()
 }
+```
+
+Run the example against mock Splunk with the following command:
+
+```
+go run github.com/osbuild/logging/internal/example_splunk/
+```
+
+Run the example against real Splunk with the following command:
+
+```
+export SPLUNK_URL=https://xxx.splunkcloud.com/services/collector/event
+export SPLUNK_TOKEN=x7d04bb1-7eae-4bde-9d92-89837206239x
+go run github.com/osbuild/logging/internal/example_splunk/
+```
