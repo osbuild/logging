@@ -43,10 +43,6 @@ type Span struct {
 }
 
 func callerPtr(skip int) string {
-	if SkipSource {
-		return ""
-	}
-
 	_, file, line, ok := runtime.Caller(skip)
 	if !ok {
 		return ""
@@ -81,16 +77,18 @@ func StartContext(ctx context.Context, name string, args ...any) (*Span, context
 		return span, ctx
 	}
 
-	logger().With(
+	log := logger().With(
 		slog.Group(SpanGroupName,
 			// keep the order of name, id, trace_id
 			slog.String("name", name),
 			slog.String("id", sid),
 			slog.String(TraceIDName, tid),
-			// keep source as the last
-			slog.String(slog.SourceKey, callerPtr(2)),
 		),
-	).Log(ctx, Level, "span "+name+" started", args...)
+	)
+	if !SkipSource {
+		log.With(slog.Group(slog.SourceKey, slog.String(slog.SourceKey, callerPtr(2))))
+	}
+	log.Log(ctx, Level, "span "+name+" started", args...)
 
 	return span, ctx
 }
@@ -100,7 +98,7 @@ func (s *Span) Event(name string, args ...any) {
 		return
 	}
 
-	logger().With(
+	log := logger().With(
 		slog.Group(SpanGroupName,
 			// keep the order of name, id, trace_id
 			slog.String("name", s.name),
@@ -108,26 +106,31 @@ func (s *Span) Event(name string, args ...any) {
 			slog.String(TraceIDName, s.tid),
 			slog.String("event", name),
 			slog.Duration("at", time.Since(s.started)),
-			// keep source as the last
-			slog.String(slog.SourceKey, callerPtr(2)),
 		),
-	).Log(s.ctx, Level, "span "+s.name+" event "+name, args...)
+	)
+	if !SkipSource {
+		log.With(slog.Group(slog.SourceKey, slog.String(slog.SourceKey, callerPtr(2))))
+	}
+	log.Log(s.ctx, Level, "span "+s.name+" event "+name, args...)
 }
 
 func (s *Span) End() {
 	if !logger().Enabled(s.ctx, Level) {
 		return
 	}
+	dur := time.Since(s.started)
 
-	logger().With(
+	log := logger().With(
 		slog.Group(SpanGroupName,
 			// keep the order of name, id, trace_id
 			slog.String("name", s.name),
 			slog.String("id", s.sid),
 			slog.String(TraceIDName, s.tid),
-			slog.Duration("dur", time.Since(s.started)),
-			// keep source as the last
-			slog.String(slog.SourceKey, callerPtr(2)),
+			slog.Duration("dur", dur),
 		),
-	).Log(s.ctx, Level, fmt.Sprintf("span %s finished in %v", s.name, time.Since(s.started)))
+	)
+	if !SkipSource {
+		log.With(slog.Group(slog.SourceKey, slog.String(slog.SourceKey, callerPtr(2))))
+	}
+	log.Log(s.ctx, Level, fmt.Sprintf("span %s finished in %v", s.name, dur))
 }

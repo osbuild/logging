@@ -35,9 +35,12 @@ func (p *Proxy) WithContext(ctx context.Context) *Proxy {
 	return p
 }
 
-// WithField is not supported and fields are ignored
+// WithField converts all values to strings
 func (p *Proxy) WithField(key string, value any) *Proxy {
-	return p
+	return &Proxy{
+		dest: p.dest.With(slog.String(key, fmt.Sprint(value))),
+		ctx:  p.ctx,
+	}
 }
 
 func (p *Proxy) Trace(args ...any) {
