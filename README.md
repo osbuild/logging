@@ -11,27 +11,27 @@ Documentation available in the package directories.
 
 ### splunk - high-performance slog handler for Splunk
 
-See [internal/example_splunk/main.go](example_splunk) for a fully working example.
+See [example_splunk](blob/main/internal/example_splunk/main.go) for a fully working example.
 
-See [pkg/splunk](splunk) package for more info.
+See [splunk](pkg/splunk) package for more info.
 
 ### strc - simple tracing via slog
 
-See [internal/example_print/main.go](example_print) and [internal/example_export/main.go](example_export) for fully working examples.
+See [example_print](blob/main/internal/example_print/main.go) and [example_export](blob/main/internal/example_export/main.go) for fully working examples.
 
-See [pkg/strc](strc) package for more info.
+See [strc](pkg/strc) package for more info.
 
 ### logrus - proxy to slog
 
-See [internal/example_logrus/main.go](example_logrus) for a fully working example.
+See [example_logrus](blob/main/internal/example_logrus/main.go) for a fully working example.
 
-See [pkg/logrus](logrus) package for more info.
+See [logrus](pkg/logrus) package for more info.
 
 ## Example application
 
-See [internal/example_echo/main.go](example_echo) for a fully working example.
+See [example_echo](blob/main/internal/example_echo/main.go) for a fully working example.
 
-See [pkg/slogecho](slogecho) package for more info.
+See [slogecho](pkg/slogecho) package for more info.
 
 ## TODO
 
