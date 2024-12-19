@@ -37,6 +37,7 @@ See [slogecho](pkg/slogecho) package for more info.
 
 * THIS IS A WORK IN PROGRESS DO NOT USE IT YET.
 * Trace/Span ID HTTP propagation does not work yet.
+* Document echo example and output.
 * Echo logging proxy.
 * Propagation tests.
 * Fix tests.

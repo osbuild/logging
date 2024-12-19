@@ -52,3 +52,15 @@ func main() {
 	e.Logger.Fatal(e.Start(":1323"))
 }
 ```
+
+Run a more complete example with:
+
+```
+go run github.com/osbuild/logging/internal/example_echo/
+```
+
+Prints something like this:
+
+```
+TODO
+```

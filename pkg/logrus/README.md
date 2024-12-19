@@ -53,3 +53,9 @@ func main() {
 	logrus.WithField("key", "value").Panic("msg with field")
 }
 ```
+
+Run the above example with:
+
+```
+go run github.com/osbuild/logging/internal/example_logrus/
+```
