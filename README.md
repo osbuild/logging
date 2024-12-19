@@ -53,8 +53,7 @@ See [slogecho](pkg/slogecho) package for more info.
 
 License: MIT
 
-* Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-composer
-* Some code in `slogecho` is from https://github.com/samber/slog-echo
+Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-composer and some code in `slogecho` is from https://github.com/samber/slog-echo - thank you.
 
 ## TODO
 
