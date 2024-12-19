@@ -9,16 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync/atomic"
 	"testing"
 )
 
 func TestSplunkHandler(t *testing.T) {
-	batches := 0
-	events := 0
 	emptyLines := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		batches++
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 
@@ -28,7 +24,6 @@ func TestSplunkHandler(t *testing.T) {
 				emptyLines++
 				continue
 			}
-			events++
 			//t.Log(line)
 			if !json.Valid([]byte(line)) {
 				t.Fatalf("invalid json: %s", line)
@@ -93,8 +88,6 @@ func TestSplunkHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%v", tt.name), func(t *testing.T) {
-			events = 0
-			batches = 0
 			emptyLines = 0
 
 			h := NewSplunkHandler(context.Background(), slog.LevelDebug, srv.URL, "", "s", "h")
@@ -103,13 +96,14 @@ func TestSplunkHandler(t *testing.T) {
 			logger := slog.New(h)
 			tt.f(logger)
 			h.Close()
+			stats := h.Statistics()
 
-			if events != tt.events {
-				t.Fatalf("expected %d events, got %d", tt.events, events)
+			if int(stats.EventCount) != tt.events {
+				t.Fatalf("expected %d events, got %d", tt.events, stats.EventCount)
 			}
 
-			if batches != tt.batches {
-				t.Fatalf("expected %d batches, got %d", tt.batches, batches)
+			if int(stats.BatchCount) != tt.batches {
+				t.Fatalf("expected %d batches, got %d", tt.batches, stats.BatchCount)
 			}
 
 			// one emtpy line per batch
@@ -121,10 +115,7 @@ func TestSplunkHandler(t *testing.T) {
 }
 
 func TestSplunkHandlerBatching(t *testing.T) {
-	var batches atomic.Int64
-	var events atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		batches.Add(1)
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(r.Body)
 
@@ -133,7 +124,6 @@ func TestSplunkHandlerBatching(t *testing.T) {
 			if line == "" {
 				continue
 			}
-			events.Add(1)
 			if !json.Valid([]byte(line)) {
 				t.Fatalf("invalid json: %s", line)
 			}
@@ -149,14 +139,15 @@ func TestSplunkHandlerBatching(t *testing.T) {
 		logger.Debug("msg", "i", i)
 	}
 	h.Close()
+	stats := h.Statistics()
 
-	t.Logf("events: %d, batches: %d", events.Load(), batches.Load())
-	if events.Load() != 4000 {
-		t.Fatalf("expected 4000 events, got %d", events.Load())
+	t.Logf("events: %d, batches: %d", stats.EventCount, stats.BatchCount)
+	if stats.EventCount != 4000 {
+		t.Fatalf("expected 4000 events, got %d", stats.BatchCount)
 	}
 
-	// TODO this must be a range it will vary
-	if batches.Load() != 1000 {
-		t.Fatalf("expected 1000 batches, got %d", batches.Load())
+	// This can depend on call stack (event length)
+	if stats.BatchCount == 0 || stats.BatchCount == stats.EventCount {
+		t.Fatalf("expected 1000 batches, got %d", stats.BatchCount)
 	}
 }

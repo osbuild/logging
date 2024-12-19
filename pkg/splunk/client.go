@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -46,14 +47,33 @@ type splunkLogger struct {
 	payloadsChannelSize int
 	maximumSize         int
 	sendFrequency       time.Duration
+
+	stats   Stats
+	statsMu sync.Mutex
+}
+
+type Stats struct {
+	// Total number of events sent to Splunk
+	EventCount uint64
+
+	// Total number of requests sent to Splunk
+	BatchCount uint64
+
+	// Total number of HTTP retries
+	RetryCount uint64
+
+	// Total number of non-200 HTTP responses
+	NonHTTP200Count uint64
+
+	// Total number of events enqueued (EventsEnqueued <= EventCount)
+	EventsEnqueued uint64
+
+	// Last request duration
+	LastRequestDuration time.Duration
 }
 
 func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *splunkLogger {
 	rcl := retryablehttp.NewClient()
-	rcl.RetryWaitMin = 300 * time.Millisecond
-	rcl.RetryWaitMax = 3 * time.Second
-	rcl.RetryMax = 5
-	rcl.Logger = log.New(io.Discard, "", 0)
 
 	sl := &splunkLogger{
 		client:              rcl.StandardClient(),
@@ -73,6 +93,21 @@ func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *
 		},
 	}
 
+	rcl.RetryWaitMin = 300 * time.Millisecond
+	rcl.RetryWaitMax = 3 * time.Second
+	rcl.RetryMax = 5
+	rcl.Logger = log.New(io.Discard, "", 0)
+	rcl.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		sl.statsMu.Lock()
+		sl.stats.RetryCount++
+		sl.statsMu.Unlock()
+
+		if err != nil && strings.Contains(err.Error(), "nonretryable") {
+			return false, nil
+		}
+		return retryablehttp.DefaultRetryPolicy(context.TODO(), resp, err)
+	}
+
 	ticker := time.NewTicker(sl.sendFrequency)
 	sl.payloads = make(chan []byte, sl.payloadsChannelSize)
 
@@ -81,6 +116,24 @@ func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *
 
 	return sl
 }
+
+// Statistics returns a copy the current statistics of the logger. It is safe to call
+// this method concurrently with other goroutines.
+func (sl *splunkLogger) Statistics() Stats {
+	sl.statsMu.Lock()
+	defer sl.statsMu.Unlock()
+
+	return sl.stats
+}
+
+// ErrFullOrClosed is returned when the payloads channel is full or closed via close().
+var ErrFullOrClosed = errors.New("cannot create new splunk event: channel full or closed")
+
+// ErrInvalidEvent is returned when the event is not a valid JSON object with a trailing newline.
+var ErrInvalidEvent = errors.New("invalid event: must be a JSON object with trailing newline")
+
+// ErrResponseNotOK is returned when the response from Splunk is not 200 OK.
+var ErrResponseNotOK = errors.New("unexpected response from Splunk")
 
 func (sl *splunkLogger) flushPayloads(ctx context.Context, ticker <-chan time.Time) {
 	defer sl.active.Store(false)
@@ -115,6 +168,9 @@ func (sl *splunkLogger) flushPayloads(ctx context.Context, ticker <-chan time.Ti
 			}
 
 			buf.Write(event)
+			sl.statsMu.Lock()
+			sl.stats.EventCount++
+			sl.statsMu.Unlock()
 			if buf.Len() >= sl.maximumSize {
 				sendPayloads()
 			}
@@ -137,21 +193,27 @@ func (sl *splunkLogger) sendPayloads(buf *bytes.Buffer) error {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Splunk "+sl.token)
 
+	start := time.Now()
 	res, err := sl.client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
+	dur := time.Since(start)
+	sl.statsMu.Lock()
+	sl.stats.LastRequestDuration = dur
+	sl.statsMu.Unlock()
 
 	if res.StatusCode != http.StatusOK {
-		buf := bytes.Buffer{}
-		_, err = buf.ReadFrom(res.Body)
-		if err != nil {
-			return fmt.Errorf("error forwarding to splunk: parsing response failed: %v\n", err)
-		}
-
-		return fmt.Errorf("error forwarding to splunk: %s\n", buf.String())
+		sl.statsMu.Lock()
+		sl.stats.NonHTTP200Count++
+		sl.statsMu.Unlock()
+		return ErrResponseNotOK
 	}
+
+	sl.statsMu.Lock()
+	sl.stats.BatchCount++
+	sl.statsMu.Unlock()
 	return nil
 }
 
@@ -177,12 +239,6 @@ func (sl *splunkLogger) close() {
 		}
 	}
 }
-
-// ErrFullOrClosed is returned when the payloads channel is full or closed via close().
-var ErrFullOrClosed = errors.New("cannot create new splunk event: channel full or closed")
-
-// ErrInvalidEvent is returned when the event is not a valid JSON object with a trailing newline.
-var ErrInvalidEvent = errors.New("invalid event: must be a JSON object with trailing newline")
 
 // event will create a new event and send it to the payloads channel. It will return
 // length of the event or an error if the event is invalid or the channel is full.
@@ -222,6 +278,10 @@ func (sl *splunkLogger) event(b []byte) (int, error) {
 
 	event := make([]byte, buf.Len())
 	copy(event, buf.Bytes())
+
+	sl.statsMu.Lock()
+	sl.stats.EventsEnqueued++
+	sl.statsMu.Unlock()
 
 	select {
 	case sl.payloads <- event:

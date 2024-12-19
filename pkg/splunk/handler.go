@@ -95,3 +95,8 @@ func (h *SplunkHandler) WithGroup(name string) slog.Handler {
 		jh:     h.jh.WithGroup(name),
 	}
 }
+
+// Statistics returns the statistics of the Splunk client.
+func (h *SplunkHandler) Statistics() Stats {
+	return h.splunk.Statistics()
+}
