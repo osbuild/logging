@@ -158,72 +158,123 @@ func TestTraceExporterPC(t *testing.T) {
 	tm := time.Now()
 
 	tests := []struct {
+		name        string
 		f           func(*slog.Logger)
 		skipSource  bool
 		includeTime bool
 		want        []slog.Attr
 	}{
-		// tracing tests without source
 		{
+			name: "tracing tests without source",
 			f: func(l *slog.Logger) {
 				process(context.Background())
 			},
 			skipSource: true,
 			want: []slog.Attr{
-				slog.Group("span",
-					"name", "process", "id", "IvQORsVBkYcT", "trace", "bqzcRlJahlbbBZHS", "source", ""),
-				slog.String("k1", "v1"),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "source", ""),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "event", "e", "at", "0s", "source", ""),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "dur", "0s", "source", ""),
-				slog.Group("span",
-					"name", "process", "id", "IvQORsVBkYcT", "trace", "bqzcRlJahlbbBZHS", "dur", "0s", "source", ""),
+				slog.Group("span", "name", "process"),
+				slog.Group("span", "id", "IvQORsV"),
+				slog.Group("span", "parent", "0000000"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "event", "e"),
+				slog.Group("span", "at", "0s"),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "dur", "0s"),
+				slog.Group("span", "name", "process"),
+				slog.Group("span", "id", "IvQORsV"),
+				slog.Group("span", "parent", "0000000"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "dur", "0s"),
 			},
 		},
-		// tracing tests with source
 		{
+			name: "tracing tests with source",
 			f: func(l *slog.Logger) {
 				process(context.Background())
 			},
 			want: []slog.Attr{
-				slog.Group("span",
-					"name", "process", "id", "IvQORsVBkYcT", "trace", "bqzcRlJahlbbBZHS", "source", "exporter_test.go:0"),
-				slog.String("k1", "v1"),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "source", "exporter_test.go:0"),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "event", "e", "at", "0s", "source", "exporter_test.go:0"),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "dur", "0s", "source", "exporter_test.go:0"),
-				slog.Group("span",
-					"name", "process", "id", "IvQORsVBkYcT", "trace", "bqzcRlJahlbbBZHS", "dur", "0s", "source", "exporter_test.go:0"),
+				slog.Group("span", "name", "process"),
+				slog.Group("span", "id", "IvQORsV"),
+				slog.Group("span", "parent", "0000000"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "event", "e"),
+				slog.Group("span", "at", "0s"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "dur", "0s"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "name", "process"),
+				slog.Group("span", "id", "IvQORsV"),
+				slog.Group("span", "parent", "0000000"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "dur", "0s"),
+				slog.Group("span", "source", "exporter_test.go:0"),
 			},
 		},
 		{
+			name: "tracing tests with time",
 			f: func(l *slog.Logger) {
 				process(context.Background())
 			},
 			includeTime: true,
 			want: []slog.Attr{
-				slog.Group("span",
-					"name", "process", "id", "IvQORsVBkYcT", "trace", "bqzcRlJahlbbBZHS", "source", "exporter_test.go:0"),
-				slog.String("k1", "v1"),
-				slog.Group("span", slog.Time("time", tm)),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "source", "exporter_test.go:0"),
-				slog.Group("span", slog.Time("time", tm)),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "event", "e", "at", "0s", "source", "exporter_test.go:0"),
-				slog.Group("span", slog.Time("time", tm)),
-				slog.Group("span",
-					"name", "subProcess", "id", "IvQORsVBkYcT.VIPEcESnuyuu", "trace", "bqzcRlJahlbbBZHS", "dur", "0s", "source", "exporter_test.go:0"),
-				slog.Group("span", slog.Time("time", tm)),
-				slog.Group("span",
-					"name", "process", "id", "IvQORsVBkYcT", "trace", "bqzcRlJahlbbBZHS", "dur", "0s", "source", "exporter_test.go:0"),
-				slog.Group("span", slog.Time("time", tm)),
+				slog.Group("span", "name", "process"),
+				slog.Group("span", "id", "IvQORsV"),
+				slog.Group("span", "parent", "0000000"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "time", tm),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "time", tm),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "event", "e"),
+				slog.Group("span", "at", "0s"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "time", tm),
+				slog.Group("span", "name", "subProcess"),
+				slog.Group("span", "id", "kYcTpgn"),
+				slog.Group("span", "parent", "IvQORsV"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "dur", "0s"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "time", tm),
+				slog.Group("span", "name", "process"),
+				slog.Group("span", "id", "IvQORsV"),
+				slog.Group("span", "parent", "0000000"),
+				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
+				slog.Group("span", "dur", "0s"),
+				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "time", tm),
 			},
 		},
 	}
@@ -234,7 +285,7 @@ func TestTraceExporterPC(t *testing.T) {
 		src = rand.NewSource(0)
 
 		want := tt.want
-		t.Run(fmt.Sprintf("%v", want), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%v", tt.name), func(t *testing.T) {
 			got = make([]slog.Attr, 0, 2)
 			SkipSource = tt.skipSource
 			if tt.includeTime {

@@ -39,6 +39,8 @@ type MiddlewareConfig struct {
 	WithRequestHeader  bool
 	WithResponseBody   bool
 	WithResponseHeader bool
+	WithTraceID        bool
+	WithSpanID         bool
 
 	Filters []Filter
 }
@@ -52,15 +54,8 @@ func NewMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 		DefaultLevel:     slog.LevelInfo,
 		ClientErrorLevel: slog.LevelWarn,
 		ServerErrorLevel: slog.LevelError,
-
-		SpanName:           "http request",
-		WithUserAgent:      false,
-		WithRequestBody:    false,
-		WithRequestHeader:  false,
-		WithResponseBody:   false,
-		WithResponseHeader: false,
-
-		Filters: []Filter{},
+		SpanName:         "http request",
+		Filters:          []Filter{},
 	})
 }
 
@@ -73,15 +68,8 @@ func NewMiddlewareWithFilters(logger *slog.Logger, filters ...Filter) func(http.
 		DefaultLevel:     slog.LevelInfo,
 		ClientErrorLevel: slog.LevelWarn,
 		ServerErrorLevel: slog.LevelError,
-
-		SpanName:           "http request",
-		WithUserAgent:      false,
-		WithRequestBody:    false,
-		WithRequestHeader:  false,
-		WithResponseBody:   false,
-		WithResponseHeader: false,
-
-		Filters: filters,
+		SpanName:         "http request",
+		Filters:          filters,
 	})
 }
 
@@ -91,12 +79,10 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			path := r.URL.Path
-			query := r.URL.RawQuery
 			method := r.Method
 			host := r.Host
 			userAgent := r.UserAgent()
 			ip := r.RemoteAddr
-			referer := r.Referer()
 
 			// dump request body
 			br := newBodyReader(r.Body, RequestBodyMaxSize, config.WithRequestBody)
@@ -123,9 +109,14 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 				end := time.Now()
 				latency := end.Sub(start)
 
-				baseAttributes := []slog.Attr{
-					slog.String(TraceIDKey, traceID.String()),
-					slog.String(SpanIDKey, spanID.String()),
+				baseAttributes := []slog.Attr{}
+
+				if config.WithTraceID {
+					baseAttributes = append(baseAttributes, slog.String(TraceIDKey, traceID.String()))
+				}
+
+				if config.WithSpanID {
+					baseAttributes = append(baseAttributes, slog.String(SpanIDKey, spanID.String()))
 				}
 
 				requestAttributes := []slog.Attr{
@@ -133,9 +124,7 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 					slog.String("method", method),
 					slog.String("host", host),
 					slog.String("path", path),
-					slog.String("query", query),
 					slog.String("ip", ip),
-					slog.String("referer", referer),
 				}
 
 				responseAttributes := []slog.Attr{

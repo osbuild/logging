@@ -25,17 +25,13 @@ var ParentIDName string = "parent"
 // SkipSource is a flag that disables source logging.
 var SkipSource bool
 
-var customLogger = slog.Default()
+var customLogger = slog.Default().WithGroup(SpanGroupName)
 
 func SetLogger(lg *slog.Logger) {
-	customLogger = lg
+	customLogger = lg.WithGroup(SpanGroupName)
 }
 
 func logger() *slog.Logger {
-	if customLogger == nil {
-		return slog.Default()
-	}
-
 	return customLogger
 }
 
@@ -59,7 +55,7 @@ func callerPtr(skip int) string {
 
 func StartContext(ctx context.Context, name string, args ...any) (*Span, context.Context) {
 	tid := TraceIDFromContext(ctx)
-	if tid == "" {
+	if tid == EmptyTraceID {
 		tid = NewTraceID()
 		ctx = WithTraceID(ctx, tid)
 	}
@@ -83,19 +79,20 @@ func StartContext(ctx context.Context, name string, args ...any) (*Span, context
 		return span, ctx
 	}
 
-	log := logger().With(
-		slog.Group(SpanGroupName,
-			// keep the order of name, id, trace_id
-			slog.String("name", name),
-			slog.String(SpanIDName, sid.ID()),
-			slog.String(ParentIDName, sid.ParentID()),
-			slog.String(TraceIDName, tid.String()),
-		),
+	// keep the order and capacity correct
+	attrs := make([]slog.Attr, 0, 4+1)
+	attrs = append(attrs,
+		slog.String("name", name),
+		slog.String(SpanIDName, sid.ID()),
+		slog.String(ParentIDName, sid.ParentID()),
+		slog.String(TraceIDName, tid.String()),
 	)
+
 	if !SkipSource {
-		log.With(slog.Group(slog.SourceKey, slog.String(slog.SourceKey, callerPtr(2))))
+		attrs = append(attrs, slog.String(slog.SourceKey, callerPtr(2)))
 	}
-	log.Log(ctx, Level, "span "+name+" started", args...)
+
+	logger().LogAttrs(ctx, Level, "span "+name+" started", attrs...)
 
 	return span, ctx
 }
@@ -105,21 +102,22 @@ func (s *Span) Event(name string, args ...any) {
 		return
 	}
 
-	log := logger().With(
-		slog.Group(SpanGroupName,
-			// keep the order of name, id, trace_id
-			slog.String("name", s.name),
-			slog.String(SpanIDName, s.sid.ID()),
-			slog.String(ParentIDName, s.sid.ParentID()),
-			slog.String(TraceIDName, s.tid.String()),
-			slog.String("event", name),
-			slog.Duration("at", time.Since(s.started)),
-		),
+	// keep the order and capacity correct
+	attrs := make([]slog.Attr, 0, 6+1)
+	attrs = append(attrs,
+		slog.String("name", s.name),
+		slog.String(SpanIDName, s.sid.ID()),
+		slog.String(ParentIDName, s.sid.ParentID()),
+		slog.String(TraceIDName, s.tid.String()),
+		slog.String("event", name),
+		slog.Duration("at", time.Since(s.started)),
 	)
+
 	if !SkipSource {
-		log.With(slog.Group(slog.SourceKey, slog.String(slog.SourceKey, callerPtr(2))))
+		attrs = append(attrs, slog.String(slog.SourceKey, callerPtr(2)))
 	}
-	log.Log(s.ctx, Level, "span "+s.name+" event "+name, args...)
+
+	logger().LogAttrs(s.ctx, Level, "span "+s.name+" event "+name, attrs...)
 }
 
 func (s *Span) End() {
@@ -128,18 +126,19 @@ func (s *Span) End() {
 	}
 	dur := time.Since(s.started)
 
-	log := logger().With(
-		slog.Group(SpanGroupName,
-			// keep the order of name, id, trace_id
-			slog.String("name", s.name),
-			slog.String(SpanIDName, s.sid.ID()),
-			slog.String(ParentIDName, s.sid.ParentID()),
-			slog.String(TraceIDName, s.tid.String()),
-			slog.Duration("dur", dur),
-		),
+	// keep the order and capacity correct
+	attrs := make([]slog.Attr, 0, 5+1)
+	attrs = append(attrs,
+		slog.String("name", s.name),
+		slog.String(SpanIDName, s.sid.ID()),
+		slog.String(ParentIDName, s.sid.ParentID()),
+		slog.String(TraceIDName, s.tid.String()),
+		slog.Duration("dur", dur),
 	)
+
 	if !SkipSource {
-		log.With(slog.Group(slog.SourceKey, slog.String(slog.SourceKey, callerPtr(2))))
+		attrs = append(attrs, slog.String(slog.SourceKey, callerPtr(2)))
 	}
-	log.Log(s.ctx, Level, fmt.Sprintf("span %s finished in %v", s.name, dur))
+
+	logger().LogAttrs(s.ctx, Level, fmt.Sprintf("span %s finished in %v", s.name, dur), attrs...)
 }

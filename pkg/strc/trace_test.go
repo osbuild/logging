@@ -40,20 +40,20 @@ func TestLogTextHandler(t *testing.T) {
 	}
 
 	s, ctx := StartContext(context.Background(), "test")
-	check(`time=? level=DEBUG msg="span test started" span.name=test span.id=IvQORsVBkYcT span.trace=bqzcRlJahlbbBZHS span.source=?`)
+	check(`time=? level=DEBUG msg="span test started" span.name=test span.id=IvQORsV span.parent=0000000 span.trace=bqzcRlJahlbbBZH span.source=?`)
 
 	s.Event("one")
-	check(`time=? level=DEBUG msg="span test event one" span.name=test span.id=IvQORsVBkYcT span.trace=bqzcRlJahlbbBZHS span.event=one span.at=? span.source=?`)
+	check(`time=? level=DEBUG msg="span test event one" span.name=test span.id=IvQORsV span.parent=0000000 span.trace=bqzcRlJahlbbBZH span.event=one span.at=? span.source=?`)
 
 	s.End()
-	check(`time=? level=DEBUG msg="span ? finished in ?" span.name=test span.id=IvQORsVBkYcT span.trace=bqzcRlJahlbbBZHS span.dur=? span.source=?`)
+	check(`time=? level=DEBUG msg="span ? finished in ?" span.name=test span.id=IvQORsV span.parent=0000000 span.trace=bqzcRlJahlbbBZH span.dur=? span.source=?`)
 
 	s, ctx = StartContext(ctx, "level1")
-	check(`time=? level=DEBUG msg="span level1 started" span.name=level1 span.id=IvQORsVBkYcT.VIPEcESnuyuu span.trace=bqzcRlJahlbbBZHS span.source=?`)
+	check(`time=? level=DEBUG msg="span level1 started" span.name=level1 span.id=kYcTpgn span.parent=IvQORsV span.trace=bqzcRlJahlbbBZH span.source=?`)
 
 	s.Event("one")
-	check(`time=? level=DEBUG msg="span level1 event one" span.name=level1 span.id=IvQORsVBkYcT.VIPEcESnuyuu span.trace=bqzcRlJahlbbBZHS span.event=one span.at=? span.source=?`)
+	check(`time=? level=DEBUG msg="span level1 event one" span.name=level1 span.id=kYcTpgn span.parent=IvQORsV span.trace=bqzcRlJahlbbBZH span.event=one span.at=? span.source=?`)
 
 	s.End()
-	check(`time=? level=DEBUG msg="span ? finished in ?" span.name=level1 span.id=IvQORsVBkYcT.VIPEcESnuyuu span.trace=bqzcRlJahlbbBZHS span.dur=? span.source=?`)
+	check(`time=? level=DEBUG msg="span ? finished in ?" span.name=level1 span.id=kYcTpgn span.parent=IvQORsV span.trace=bqzcRlJahlbbBZH span.dur=? span.source=?`)
 }
