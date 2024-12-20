@@ -63,10 +63,7 @@ Note the `ctx` variable is overwritten by the `StartContext` function, it is bes
 span, ctx2 := strc.StartContext(ctx, "calculating something big")
 defer span.End()
 
-// ctx is still available and it is the wrong context to use
-doSomething(ctx) // WRONG!
-
-doSomething(ctx2) // RIGHT
+doSomething(ctx) // wrong, should be ctx2
 ```
 
 These are all the basics.
@@ -103,28 +100,26 @@ go run github.com/osbuild/logging/internal/example_logrus/
 
 See [logrus](pkg/logrus) package for more info.
 
-### slogecho - tracing and logging middleware for Echo
+## Full example
 
-See [example_echo](internal/example_echo/main.go) for a fully working example. It utilizes all the packages above. To see it in action:
+For a full example, see [example_web](internal/example_web/main.go). To see it in action:
 
 ```
-go run github.com/osbuild/logging/internal/example_echo/
+go run github.com/osbuild/logging/internal/example_web/
 ```
 
-See [slogecho](pkg/slogecho) package for more info.
+See [logrus](pkg/logrus) package for more info.
 
 ## AUTHORS and LICENSE
 
 License: MIT
 
-Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-composer and some code in `slogecho` is from https://github.com/samber/slog-echo - thank you.
+Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-composer and some code in `strc` is from https://github.com/samber/slog-http
 
 ## TODO
 
-* Span ID must be struct (array of bytes, fixed length) with parent.child structure. Currently it concatenates the whole call stack which is dangerous and ineffective.
 * Echo logging proxy.
 * Tracing must be off by default.
 * Auto trace_id adding via callback function (to allow UUID adding).
-* Add stdlib middleware and rename slogecho to strcware
 * Fix tests.
 * Rebuild examples in READMEs.

@@ -16,6 +16,12 @@ var SpanGroupName string = "span"
 // TraceIDName is the key name used for trace ID.
 var TraceIDName string = "trace"
 
+// SpanIDName is the key name used for trace ID.
+var SpanIDName string = "id"
+
+// ParentIDName is the key name used for trace ID.
+var ParentIDName string = "parent"
+
 // SkipSource is a flag that disables source logging.
 var SkipSource bool
 
@@ -36,8 +42,8 @@ func logger() *slog.Logger {
 type Span struct {
 	ctx     context.Context
 	name    string
-	tid     string
-	sid     string
+	tid     TraceID
+	sid     SpanID
 	args    []any
 	started time.Time
 }
@@ -52,7 +58,7 @@ func callerPtr(skip int) string {
 }
 
 func StartContext(ctx context.Context, name string, args ...any) (*Span, context.Context) {
-	tid := TraceID(ctx)
+	tid := TraceIDFromContext(ctx)
 	if tid == "" {
 		tid = NewTraceID()
 		ctx = WithTraceID(ctx, tid)
@@ -81,8 +87,9 @@ func StartContext(ctx context.Context, name string, args ...any) (*Span, context
 		slog.Group(SpanGroupName,
 			// keep the order of name, id, trace_id
 			slog.String("name", name),
-			slog.String("id", sid),
-			slog.String(TraceIDName, tid),
+			slog.String(SpanIDName, sid.ID()),
+			slog.String(ParentIDName, sid.ParentID()),
+			slog.String(TraceIDName, tid.String()),
 		),
 	)
 	if !SkipSource {
@@ -102,8 +109,9 @@ func (s *Span) Event(name string, args ...any) {
 		slog.Group(SpanGroupName,
 			// keep the order of name, id, trace_id
 			slog.String("name", s.name),
-			slog.String("id", s.sid),
-			slog.String(TraceIDName, s.tid),
+			slog.String(SpanIDName, s.sid.ID()),
+			slog.String(ParentIDName, s.sid.ParentID()),
+			slog.String(TraceIDName, s.tid.String()),
 			slog.String("event", name),
 			slog.Duration("at", time.Since(s.started)),
 		),
@@ -124,8 +132,9 @@ func (s *Span) End() {
 		slog.Group(SpanGroupName,
 			// keep the order of name, id, trace_id
 			slog.String("name", s.name),
-			slog.String("id", s.sid),
-			slog.String(TraceIDName, s.tid),
+			slog.String(SpanIDName, s.sid.ID()),
+			slog.String(ParentIDName, s.sid.ParentID()),
+			slog.String(TraceIDName, s.tid.String()),
 			slog.Duration("dur", dur),
 		),
 	)

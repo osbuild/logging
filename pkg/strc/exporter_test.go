@@ -108,7 +108,6 @@ func TestLogExporter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		// make sure the source for trace/span IDs is deterministic
 		src = rand.NewSource(0)
 
 		want := tt.want

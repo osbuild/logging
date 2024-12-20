@@ -1,4 +1,4 @@
-module github.com/osbuild/logging/internal/example_echo
+module github.com/osbuild/logging/internal/example_web
 
 go 1.23.3
 

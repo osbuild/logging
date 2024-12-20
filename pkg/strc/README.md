@@ -67,9 +67,22 @@ id := TraceIDFromRequest(request)
 
 A standard library HTTP middleware is provided for trace propagation
 
-TODO
+```go
+middleware := strc.NewMiddleware(logger)
+mux := http.NewServeMux()
+mux.Handle("/", middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// ...
+})))
+```
 
-A custom Echo middleware is available in a separate package named `slogecho` with the same purpose.
+The library does not provide native Echo middleware, but a standard middleware can be easily used from Echo:
+
+```go
+middleware := strc.NewMiddleware(logger)
+e.Use(echo.WrapMiddleware(middleware))
+```
+
+The `strc.Middeware` can be optionally configured to log detailed debug information like request or reply HTTP headers or even full body. This is turned off by default, see `strc.MiddlewareConfig` for more info.
 
 ### HTTP client
 

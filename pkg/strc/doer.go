@@ -6,23 +6,6 @@ import (
 	"strings"
 )
 
-var (
-	RequestBodyMaxSize  = 64 * 1024 // 64KB
-	ResponseBodyMaxSize = 64 * 1024 // 64KB
-
-	HiddenRequestHeaders = map[string]struct{}{
-		"authorization": {},
-		"cookie":        {},
-		"set-cookie":    {},
-		"x-auth-token":  {},
-		"x-csrf-token":  {},
-		"x-xsrf-token":  {},
-	}
-	HiddenResponseHeaders = map[string]struct{}{
-		"set-cookie": {},
-	}
-)
-
 // DoerErr is a simple wrapped error without any message. Additional message would
 // stack for each request as multiple doers are called leading to:
 //

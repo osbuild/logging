@@ -13,101 +13,129 @@ type key int
 const (
 	traceIDKey key = iota
 	spanIDKey  key = iota
-)
 
-const (
+	traceLength = 15 // ojtlqPCGXEWytHg
+	spanLength  = 7  // aCBzdka.NjPdyjv
+
 	traceHTTPHeader = "X-Strc-Trace-ID"
 	spanHTTPHeader  = "X-Strc-Span-ID"
+
+	EmptyTraceID TraceID = TraceID("000000000000000")
+	EmptySpanID  SpanID  = SpanID("0000000.0000000")
 )
 
-// StartContext returns trace ID from a context. It returns an empty string if trace ID is not found.
+// TraceID is a unique identifier for a trace.
+type TraceID string
+
+func (t TraceID) String() string {
+	if t == "" {
+		return EmptyTraceID.String()
+	}
+
+	return string(t)
+}
+
+// NewTraceID generates a new random trace ID.
+func NewTraceID() TraceID {
+	return TraceID(randString(traceLength))
+}
+
+// SpanID is a unique identifier for a trace.
+type SpanID string
+
+func (s SpanID) String() string {
+	if s == "" {
+		return EmptySpanID.String()
+	}
+
+	return string(s)
+}
+
+func (s SpanID) ParentID() string {
+	return string(s)[:spanLength]
+}
+
+func (s SpanID) ID() string {
+	return string(s)[spanLength+1 : spanLength*2+1]
+}
+
+// NewSpanID generates a new span ID. Uses context to fetch its parent span ID.
+func NewSpanID(ctx context.Context) SpanID {
+	return SpanID(SpanIDFromContext(ctx).ID() + "." + randString(spanLength))
+}
+
+// StartContext returns trace ID from a context. It returns EmptyTraceID if trace ID is not found.
 // Use NewTraceID to generate a new trace ID.
-func TraceID(ctx context.Context) string {
+func TraceIDFromContext(ctx context.Context) TraceID {
 	if ctx == nil {
-		return ""
+		return EmptyTraceID
 	}
 
 	if v := ctx.Value(traceIDKey); v != nil {
-		return v.(string)
+		return v.(TraceID)
 	}
-	
-	return ""
-}
 
-// TraceIDFromContext is an alias for TraceID.
-func TraceIDFromContext(ctx context.Context) string {
-	return TraceID(ctx)
+	return EmptyTraceID
 }
 
 // StartContext returns a new context with trace ID.
-func WithTraceID(ctx context.Context, traceID string) context.Context {
+func WithTraceID(ctx context.Context, traceID TraceID) context.Context {
 	return context.WithValue(ctx, traceIDKey, traceID)
 }
 
-// TraceIDFromRequest returns trace ID from a request. If trace ID is not found, it returns an empty string.
-func TraceIDFromRequest(req *http.Request) string {
-	return req.Header.Get(traceHTTPHeader)
+// TraceIDFromRequest returns trace ID from a request. If trace ID is not found, it returns EmptyTraceID.
+func TraceIDFromRequest(req *http.Request) TraceID {
+	t := req.Header.Get(traceHTTPHeader)
+	if t == "" {
+		return EmptyTraceID
+	}
+	return TraceID(t)
 }
 
 // AddTraceIDHeader adds trace ID from context to a request header. If trace ID is not found in the context or
 // if the request already has a trace ID header, it does nothing.
 func AddTraceIDHeader(ctx context.Context, req *http.Request) {
-	traceID := TraceID(ctx)
+	traceID := TraceIDFromContext(ctx)
 	if traceID != "" && req.Header.Get(traceHTTPHeader) == "" {
-		req.Header.Add(traceHTTPHeader, traceID)
+		req.Header.Add(traceHTTPHeader, traceID.String())
 	}
 }
 
-// StartContext returns span ID from a context. It returns an empty string if span ID is not found.
+// StartContext returns span ID from a context. It returns EmptySpanID if span ID is not found.
 // Use NewSpanID to generate a new span ID.
-func SpanID(ctx context.Context) string {
+func SpanIDFromContext(ctx context.Context) SpanID {
 	if ctx == nil {
-		return ""
+		return EmptySpanID
 	}
 
 	if v := ctx.Value(spanIDKey); v != nil {
-		return v.(string)
+		return v.(SpanID)
 	}
 
-	return ""
-}
-
-// SpanIDFromContext is an alias for SpanID.
-func SpanIDFromContext(ctx context.Context) string {
-	return SpanID(ctx)
+	return EmptySpanID
 }
 
 // StartContext returns a new context with span ID.
-func WithSpanID(ctx context.Context, spanID string) context.Context {
+func WithSpanID(ctx context.Context, spanID SpanID) context.Context {
 	return context.WithValue(ctx, spanIDKey, spanID)
 }
 
-// SpanIDFromRequest returns span ID from a request. If span ID is not found, it returns an empty string.
-func SpanIDFromRequest(req *http.Request) string {
-	return req.Header.Get(spanHTTPHeader)
+// SpanIDFromRequest returns span ID from a request. If span ID is not found, it returns EmptySpanID.
+func SpanIDFromRequest(req *http.Request) SpanID {
+	s := req.Header.Get(spanHTTPHeader)
+	if s == "" {
+		return EmptySpanID
+	}
+	return SpanID(s)
 }
 
 // AddSpanIDHeader adds span ID from context to a request header. If span ID is not found in the context or
 // if the request already has a span ID header, it does nothing.
 func AddSpanIDHeader(ctx context.Context, req *http.Request) {
-	spanID := SpanID(ctx)
+	spanID := SpanIDFromContext(ctx)
 	if spanID != "" && req.Header.Get(spanHTTPHeader) == "" {
-		req.Header.Add(spanHTTPHeader, spanID)
+		req.Header.Add(spanHTTPHeader, spanID.String())
 	}
-}
-
-// NewTraceID generates a new trace ID.
-func NewTraceID() string {
-	return randString(13)
-}
-
-// NewSpanID generates a new span ID.
-func NewSpanID(ctx context.Context) string {
-	parent := SpanID(ctx)
-	if parent == "" {
-		return randString(7)
-	}
-	return parent + "." + randString(7)
 }
 
 const (

@@ -9,6 +9,18 @@ import (
 	"net/http"
 )
 
+var _ WrapResponseWriter = (*bodyWriter)(nil)
+
+type WrapResponseWriter interface {
+	http.ResponseWriter
+	http.Flusher
+	http.Hijacker
+
+	Status() int
+	BytesWritten() int
+	Body() []byte
+}
+
 var _ http.ResponseWriter = (*bodyWriter)(nil)
 var _ http.Flusher = (*bodyWriter)(nil)
 var _ http.Hijacker = (*bodyWriter)(nil)
@@ -18,6 +30,7 @@ type bodyWriter struct {
 	body    *bytes.Buffer
 	maxSize int
 	bytes   int
+	status  int
 }
 
 // implements http.ResponseWriter
@@ -32,6 +45,12 @@ func (w *bodyWriter) Write(b []byte) (int, error) {
 
 	w.bytes += len(b) //nolint:staticcheck
 	return w.ResponseWriter.Write(b)
+}
+
+// implements http.ResponseWriter
+func (r *bodyWriter) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
 }
 
 // implements http.Flusher
@@ -50,6 +69,18 @@ func (w *bodyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, errors.New("Hijack not supported")
 }
 
+func (w *bodyWriter) Status() int {
+	return w.status
+}
+
+func (w *bodyWriter) BytesWritten() int {
+	return w.bytes
+}
+
+func (w *bodyWriter) Body() []byte {
+	return w.body.Bytes()
+}
+
 func newBodyWriter(writer http.ResponseWriter, maxSize int, recordBody bool) *bodyWriter {
 	var body *bytes.Buffer
 	if recordBody {
@@ -61,6 +92,7 @@ func newBodyWriter(writer http.ResponseWriter, maxSize int, recordBody bool) *bo
 		body:           body,
 		maxSize:        maxSize,
 		bytes:          0,
+		status:         http.StatusOK,
 	}
 }
 

@@ -1,13 +1,12 @@
-package slogecho
+package strc
 
 import (
+	"net/http"
 	"regexp"
 	"strings"
-
-	"github.com/labstack/echo/v4"
 )
 
-type Filter func(ctx echo.Context) bool
+type Filter func(w WrapResponseWriter, r *http.Request) bool
 
 // Basic
 func Accept(filter Filter) Filter { return filter }
@@ -15,8 +14,8 @@ func Ignore(filter Filter) Filter { return filter }
 
 // Method
 func AcceptMethod(methods ...string) Filter {
-	return func(c echo.Context) bool {
-		reqMethod := strings.ToLower(c.Request().Method)
+	return func(w WrapResponseWriter, r *http.Request) bool {
+		reqMethod := strings.ToLower(r.Method)
 
 		for _, method := range methods {
 			if strings.ToLower(method) == reqMethod {
@@ -29,8 +28,8 @@ func AcceptMethod(methods ...string) Filter {
 }
 
 func IgnoreMethod(methods ...string) Filter {
-	return func(c echo.Context) bool {
-		reqMethod := strings.ToLower(c.Request().Method)
+	return func(w WrapResponseWriter, r *http.Request) bool {
+		reqMethod := strings.ToLower(r.Method)
 
 		for _, method := range methods {
 			if strings.ToLower(method) == reqMethod {
@@ -44,9 +43,9 @@ func IgnoreMethod(methods ...string) Filter {
 
 // Status
 func AcceptStatus(statuses ...int) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, status := range statuses {
-			if status == c.Response().Status {
+			if status == w.Status() {
 				return true
 			}
 		}
@@ -56,9 +55,9 @@ func AcceptStatus(statuses ...int) Filter {
 }
 
 func IgnoreStatus(statuses ...int) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, status := range statuses {
-			if status == c.Response().Status {
+			if status == w.Status() {
 				return false
 			}
 		}
@@ -68,34 +67,34 @@ func IgnoreStatus(statuses ...int) Filter {
 }
 
 func AcceptStatusGreaterThan(status int) Filter {
-	return func(c echo.Context) bool {
-		return c.Response().Status > status
+	return func(w WrapResponseWriter, r *http.Request) bool {
+		return w.Status() > status
 	}
 }
 
 func IgnoreStatusLessThan(status int) Filter {
-	return func(c echo.Context) bool {
-		return c.Response().Status < status
+	return func(w WrapResponseWriter, r *http.Request) bool {
+		return w.Status() < status
 	}
 }
 
 func AcceptStatusGreaterThanOrEqual(status int) Filter {
-	return func(c echo.Context) bool {
-		return c.Response().Status >= status
+	return func(w WrapResponseWriter, r *http.Request) bool {
+		return w.Status() >= status
 	}
 }
 
 func IgnoreStatusLessThanOrEqual(status int) Filter {
-	return func(c echo.Context) bool {
-		return c.Response().Status <= status
+	return func(w WrapResponseWriter, r *http.Request) bool {
+		return w.Status() <= status
 	}
 }
 
 // Path
 func AcceptPath(urls ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, url := range urls {
-			if c.Request().URL.Path == url {
+			if r.URL.Path == url {
 				return true
 			}
 		}
@@ -105,9 +104,9 @@ func AcceptPath(urls ...string) Filter {
 }
 
 func IgnorePath(urls ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, url := range urls {
-			if c.Request().URL.Path == url {
+			if r.URL.Path == url {
 				return false
 			}
 		}
@@ -117,9 +116,9 @@ func IgnorePath(urls ...string) Filter {
 }
 
 func AcceptPathContains(parts ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, part := range parts {
-			if strings.Contains(c.Request().URL.Path, part) {
+			if strings.Contains(r.URL.Path, part) {
 				return true
 			}
 		}
@@ -129,9 +128,9 @@ func AcceptPathContains(parts ...string) Filter {
 }
 
 func IgnorePathContains(parts ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, part := range parts {
-			if strings.Contains(c.Request().URL.Path, part) {
+			if strings.Contains(r.URL.Path, part) {
 				return false
 			}
 		}
@@ -141,9 +140,9 @@ func IgnorePathContains(parts ...string) Filter {
 }
 
 func AcceptPathPrefix(prefixs ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
-			if strings.HasPrefix(c.Request().URL.Path, prefix) {
+			if strings.HasPrefix(r.URL.Path, prefix) {
 				return true
 			}
 		}
@@ -153,9 +152,9 @@ func AcceptPathPrefix(prefixs ...string) Filter {
 }
 
 func IgnorePathPrefix(prefixs ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
-			if strings.HasPrefix(c.Request().URL.Path, prefix) {
+			if strings.HasPrefix(r.URL.Path, prefix) {
 				return false
 			}
 		}
@@ -165,9 +164,9 @@ func IgnorePathPrefix(prefixs ...string) Filter {
 }
 
 func AcceptPathSuffix(prefixs ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
-			if strings.HasPrefix(c.Request().URL.Path, prefix) {
+			if strings.HasPrefix(r.URL.Path, prefix) {
 				return true
 			}
 		}
@@ -177,9 +176,9 @@ func AcceptPathSuffix(prefixs ...string) Filter {
 }
 
 func IgnorePathSuffix(suffixs ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, suffix := range suffixs {
-			if strings.HasSuffix(c.Request().URL.Path, suffix) {
+			if strings.HasSuffix(r.URL.Path, suffix) {
 				return false
 			}
 		}
@@ -189,9 +188,9 @@ func IgnorePathSuffix(suffixs ...string) Filter {
 }
 
 func AcceptPathMatch(regs ...regexp.Regexp) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, reg := range regs {
-			if reg.Match([]byte(c.Request().URL.Path)) {
+			if reg.Match([]byte(r.URL.Path)) {
 				return true
 			}
 		}
@@ -201,9 +200,9 @@ func AcceptPathMatch(regs ...regexp.Regexp) Filter {
 }
 
 func IgnorePathMatch(regs ...regexp.Regexp) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, reg := range regs {
-			if reg.Match([]byte(c.Request().URL.Path)) {
+			if reg.Match([]byte(r.URL.Path)) {
 				return false
 			}
 		}
@@ -214,9 +213,9 @@ func IgnorePathMatch(regs ...regexp.Regexp) Filter {
 
 // Host
 func AcceptHost(hosts ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, host := range hosts {
-			if c.Request().URL.Host == host {
+			if r.URL.Host == host {
 				return true
 			}
 		}
@@ -226,9 +225,9 @@ func AcceptHost(hosts ...string) Filter {
 }
 
 func IgnoreHost(hosts ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, host := range hosts {
-			if c.Request().URL.Host == host {
+			if r.URL.Host == host {
 				return false
 			}
 		}
@@ -238,9 +237,9 @@ func IgnoreHost(hosts ...string) Filter {
 }
 
 func AcceptHostContains(parts ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, part := range parts {
-			if strings.Contains(c.Request().URL.Host, part) {
+			if strings.Contains(r.URL.Host, part) {
 				return true
 			}
 		}
@@ -250,9 +249,9 @@ func AcceptHostContains(parts ...string) Filter {
 }
 
 func IgnoreHostContains(parts ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, part := range parts {
-			if strings.Contains(c.Request().URL.Host, part) {
+			if strings.Contains(r.URL.Host, part) {
 				return false
 			}
 		}
@@ -262,9 +261,9 @@ func IgnoreHostContains(parts ...string) Filter {
 }
 
 func AcceptHostPrefix(prefixs ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
-			if strings.HasPrefix(c.Request().URL.Host, prefix) {
+			if strings.HasPrefix(r.URL.Host, prefix) {
 				return true
 			}
 		}
@@ -274,9 +273,9 @@ func AcceptHostPrefix(prefixs ...string) Filter {
 }
 
 func IgnoreHostPrefix(prefixs ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
-			if strings.HasPrefix(c.Request().URL.Host, prefix) {
+			if strings.HasPrefix(r.URL.Host, prefix) {
 				return false
 			}
 		}
@@ -286,9 +285,9 @@ func IgnoreHostPrefix(prefixs ...string) Filter {
 }
 
 func AcceptHostSuffix(prefixs ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
-			if strings.HasPrefix(c.Request().URL.Host, prefix) {
+			if strings.HasPrefix(r.URL.Host, prefix) {
 				return true
 			}
 		}
@@ -298,9 +297,9 @@ func AcceptHostSuffix(prefixs ...string) Filter {
 }
 
 func IgnoreHostSuffix(suffixs ...string) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, suffix := range suffixs {
-			if strings.HasSuffix(c.Request().URL.Host, suffix) {
+			if strings.HasSuffix(r.URL.Host, suffix) {
 				return false
 			}
 		}
@@ -310,9 +309,9 @@ func IgnoreHostSuffix(suffixs ...string) Filter {
 }
 
 func AcceptHostMatch(regs ...regexp.Regexp) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, reg := range regs {
-			if reg.Match([]byte(c.Request().URL.Host)) {
+			if reg.Match([]byte(r.URL.Host)) {
 				return true
 			}
 		}
@@ -322,9 +321,9 @@ func AcceptHostMatch(regs ...regexp.Regexp) Filter {
 }
 
 func IgnoreHostMatch(regs ...regexp.Regexp) Filter {
-	return func(c echo.Context) bool {
+	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, reg := range regs {
-			if reg.Match([]byte(c.Request().URL.Host)) {
+			if reg.Match([]byte(r.URL.Host)) {
 				return false
 			}
 		}

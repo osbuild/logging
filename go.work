@@ -2,7 +2,7 @@ go 1.23.3
 
 use (
 	.
-	./internal/example_echo
+	./internal/example_web
 	./internal/example_export
 	./internal/example_logrus
 	./internal/example_print

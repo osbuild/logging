@@ -39,11 +39,10 @@ func (h *MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *MultiHandler) Handle(ctx context.Context, r slog.Record) error {
-
-	if id := TraceIDFromContext(ctx); id != "" && TraceIDFieldKey != "" {
+	if id := TraceIDFromContext(ctx); id != EmptyTraceID && TraceIDFieldKey != "" {
 		idAttr := slog.Attr{
 			Key:   TraceIDFieldKey,
-			Value: slog.StringValue(id),
+			Value: slog.StringValue(id.String()),
 		}
 		r.AddAttrs(idAttr)
 	}
