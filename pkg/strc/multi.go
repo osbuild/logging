@@ -12,6 +12,10 @@ import (
 
 var _ slog.Handler = (*MultiHandler)(nil)
 
+var (
+	TraceIDFieldKey = "trace_id"
+)
+
 // MultiHandler distributes records to multiple slog.Handler
 type MultiHandler struct {
 	handlers []slog.Handler
@@ -35,6 +39,15 @@ func (h *MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *MultiHandler) Handle(ctx context.Context, r slog.Record) error {
+
+	if id := TraceIDFromContext(ctx); id != "" && TraceIDFieldKey != "" {
+		idAttr := slog.Attr{
+			Key:   TraceIDFieldKey,
+			Value: slog.StringValue(id),
+		}
+		r.AddAttrs(idAttr)
+	}
+
 	var errs []error
 	for i := range h.handlers {
 		if h.handlers[i].Enabled(ctx, r.Level) {

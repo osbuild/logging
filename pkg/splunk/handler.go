@@ -40,6 +40,7 @@ func NewSplunkHandler(ctx context.Context, level slog.Level, url, token, source,
 		level:  level,
 		splunk: newSplunkLogger(ctx, url, token, source, hostname),
 	}
+
 	h.jh = slog.NewJSONHandler(h, &slog.HandlerOptions{Level: level, AddSource: true, ReplaceAttr: replaceAttr})
 	return h
 }
@@ -57,6 +58,7 @@ func (h *SplunkHandler) Close() {
 	h.splunk.close()
 }
 
+// Write is called by the JSON handler to write the JSON payload to the Splunk client.
 func (h *SplunkHandler) Write(buf []byte) (int, error) {
 	return h.splunk.event(buf)
 }

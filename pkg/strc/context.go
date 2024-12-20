@@ -23,9 +23,14 @@ const (
 // StartContext returns trace ID from a context. It returns an empty string if trace ID is not found.
 // Use NewTraceID to generate a new trace ID.
 func TraceID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+
 	if v := ctx.Value(traceIDKey); v != nil {
 		return v.(string)
 	}
+	
 	return ""
 }
 
@@ -56,9 +61,14 @@ func AddTraceIDHeader(ctx context.Context, req *http.Request) {
 // StartContext returns span ID from a context. It returns an empty string if span ID is not found.
 // Use NewSpanID to generate a new span ID.
 func SpanID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+
 	if v := ctx.Value(spanIDKey); v != nil {
 		return v.(string)
 	}
+
 	return ""
 }
 

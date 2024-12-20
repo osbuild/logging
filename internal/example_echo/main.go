@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -52,7 +53,8 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 		c.Logger().Debugj(map[string]interface{}{"service": "e1", "msg": "echo msg"})
 
 		r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8132/", nil)
-		doer := strc.NewTracingDoerWithConfig(http.DefaultClient, strc.TracingDoerConfig{true, true, true, true})
+		//doer := strc.NewTracingDoerWithConfig(http.DefaultClient, strc.TracingDoerConfig{true, true, true, true})
+		doer := strc.NewTracingDoer(http.DefaultClient)
 		doer.Do(r)
 
 		return c.String(http.StatusOK, "OK (e1)")
@@ -62,18 +64,18 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 	e2 := echo.New()
 	e2.HideBanner = true
 	e2.HidePort = true
-	e2.Use(slogecho.NewWithFilters(logger, slogecho.IgnorePathPrefix("/services/collector/event")))
+	mw := slogecho.NewWithFilters(logger, slogecho.IgnorePathPrefix("/services/collector/event"))
+	e2.Use(mw)
 	e2.GET("/", func(c echo.Context) error {
 		ctx := c.Request().Context()
 		defer wg.Done()
 
-		// TODO trace is not here yet
 		span, ctx := strc.StartContext(ctx, "e2")
 		defer span.End()
 
 		subProcess(ctx)
 
-		slog.DebugContext(ctx, "slog msg", "service", "e1")
+		slog.With("w1", "v1").DebugContext(ctx, "slog msg", "service", "e1")
 		logrus.WithField("service", "e1").Debug("logrus msg")
 		c.Logger().Debugj(map[string]interface{}{"service": "e1", "msg": "echo msg"})
 
@@ -83,6 +85,8 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 		return c.String(http.StatusOK, "splunk mock")
 	})
 	go e2.Start(":8132")
+
+	// TODO http stdlib server
 
 	return e1, e2
 }
@@ -104,4 +108,6 @@ func main() {
 	wg.Add(2)
 	http.Get("http://localhost:8131/")
 	wg.Wait()
+	stats := hSplunk.Statistics()
+	fmt.Printf("sent %d events to splunk mock\n", stats.EventCount)
 }

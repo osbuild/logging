@@ -4,11 +4,29 @@ A simple tracing library. When OpenTelemetry is a bit too much. Features:
 
 * Simple code instrumentation.
 * Serialization into `slog` (structured logging library).
-* Simple exporting slog handler.
+* Handler with multiple subhandlers for futher processing.
+* Simple exporting slog handler for callback-based exporters.
+* Adding "trace_id" root field to all logs for easy correlation between logs and traces.
 
-### Provided tracing data
+### Instrumentation
 
-* `msg`: message in the form `span XXX started`
+Add the following code to function you want to trace:
+
+```go
+span, ctx := strc.StartContext(ctx, "span name")
+defer span.End()
+```
+
+Optionally, additional "savepoints" can be inserted:
+
+```go
+span.Event("an event")
+```
+
+### Result
+
+All results are stored in `log/slog` records. Each span creates one record with group named `span` with the following data:
+
 * `span.name`: span name 
 * `span.id`: span ID (child spands are concatenated with `.`) 
 * `span.trace`: trace ID 
@@ -17,7 +35,55 @@ A simple tracing library. When OpenTelemetry is a bit too much. Features:
 * `span.duration`: trace duration (only when span ends) 
 * `span.time`: log time (can be enabled in exporter) 
 
-### How to use
+Spans natually end up in log sink too, for better readability, the following fields are added to the root namespace:
+
+* `msg`: message in the form `span XXX started` or `event XXX`
+* `trace_id`: correlation ID added to all logging messages (not only traces)
+
+Adding the correlation ID can be turned off by setting `strc.TraceIDFieldKey = ""`.
+
+### Propagation
+
+A simple HTTP header-based propagation API is available. Note this is not meant to be used directly, there is HTTP middleware and client wrapper available:
+
+```go
+// create new trace id
+id := strc.NewTraceID()
+
+// create a new context with trace id value
+ctx := strc.WithContext(context.Background(), id)
+
+// fetch the id from the context
+id := strc.TraceIDFromContext(ctx)
+
+// add the id from context to a HTTP request
+strc.AddTraceIDHeader(ctx, request)
+
+// fetch the id from a request
+id := TraceIDFromRequest(request)
+```
+
+### Middleware
+
+A standard library HTTP middleware is provided for trace propagation
+
+TODO
+
+A custom Echo middleware is available in a separate package named `slogecho` with the same purpose.
+
+### HTTP client
+
+A `TracingDoer` type can be used to decorate HTTP clients adding necessary propagation automatically as long as tracing information is in the request context:
+
+```go
+r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://home.zapletalovi.com/", nil)
+doer := strc.NewTracingDoer(http.DefaultClient)
+doer.Do(r)
+```
+
+The `TracingDoer` can be optionally configured to log detailed debug information like request or reply HTTP headers or even full body. This is turned off by default, see `strc.TracingDoerConfig` for more info.
+
+### Full example
 
 ```go
 package main

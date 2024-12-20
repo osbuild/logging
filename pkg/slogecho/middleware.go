@@ -103,6 +103,10 @@ func NewWithConfig(logger *slog.Logger, config Config) echo.MiddlewareFunc {
 			start := time.Now()
 			path := req.URL.Path
 			query := req.URL.RawQuery
+			method := req.Method
+			host := req.Host
+			msg := method + " " + "request"
+			level := config.DefaultLevel
 
 			params := map[string]string{}
 			for i, k := range c.ParamNames() {
@@ -121,13 +125,13 @@ func NewWithConfig(logger *slog.Logger, config Config) echo.MiddlewareFunc {
 			traceID := strc.TraceIDFromRequest(req)
 			if traceID == "" {
 				traceID = strc.NewTraceID()
-				c.SetRequest(c.Request().WithContext(strc.WithTraceID(c.Request().Context(), traceID)))
 			}
+			c.SetRequest(c.Request().WithContext(strc.WithTraceID(c.Request().Context(), traceID)))
+
 			spanID := strc.SpanIDFromRequest(req)
-			if spanID == "" {
-				spanID = strc.NewSpanID(c.Request().Context())
-				c.SetRequest(c.Request().WithContext(strc.WithSpanID(c.Request().Context(), spanID)))
-			}
+			span, ctxWithSpan := strc.StartContext(c.Request().Context(), msg)
+			c.SetRequest(c.Request().WithContext(ctxWithSpan))
+			defer span.End()
 
 			err = next(c)
 
@@ -141,8 +145,6 @@ func NewWithConfig(logger *slog.Logger, config Config) echo.MiddlewareFunc {
 			}
 
 			status := res.Status
-			method := req.Method
-			host := req.Host
 			route := c.Path()
 			end := time.Now()
 			latency := end.Sub(start)
@@ -273,9 +275,6 @@ func NewWithConfig(logger *slog.Logger, config Config) echo.MiddlewareFunc {
 					return
 				}
 			}
-
-			level := config.DefaultLevel
-			msg := method + " " + "request"
 
 			if status >= http.StatusInternalServerError {
 				level = config.ServerErrorLevel

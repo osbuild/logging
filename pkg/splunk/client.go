@@ -105,7 +105,7 @@ func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *
 		if err != nil && strings.Contains(err.Error(), "nonretryable") {
 			return false, nil
 		}
-		return retryablehttp.DefaultRetryPolicy(context.TODO(), resp, err)
+		return retryablehttp.DefaultRetryPolicy(ctx, resp, err)
 	}
 
 	ticker := time.NewTicker(sl.sendFrequency)
@@ -138,9 +138,8 @@ var ErrResponseNotOK = errors.New("unexpected response from Splunk")
 func (sl *splunkLogger) flushPayloads(ctx context.Context, ticker <-chan time.Time) {
 	defer sl.active.Store(false)
 
-	// pre-allocate with a 1kB tail if the soft limit is reached
 	buf := &bytes.Buffer{}
-	buf.Grow(sl.maximumSize + 1024)
+	buf.Grow(sl.maximumSize + DefaultEventSize)
 
 	sendPayloads := func() {
 		err := sl.sendPayloads(buf)
@@ -199,11 +198,6 @@ func (sl *splunkLogger) sendPayloads(buf *bytes.Buffer) error {
 		return err
 	}
 	defer res.Body.Close()
-	dur := time.Since(start)
-	sl.statsMu.Lock()
-	sl.stats.LastRequestDuration = dur
-	sl.statsMu.Unlock()
-
 	if res.StatusCode != http.StatusOK {
 		sl.statsMu.Lock()
 		sl.stats.NonHTTP200Count++
@@ -211,7 +205,9 @@ func (sl *splunkLogger) sendPayloads(buf *bytes.Buffer) error {
 		return ErrResponseNotOK
 	}
 
+	dur := time.Since(start)
 	sl.statsMu.Lock()
+	sl.stats.LastRequestDuration = dur
 	sl.stats.BatchCount++
 	sl.statsMu.Unlock()
 	return nil
@@ -230,11 +226,11 @@ func (sl *splunkLogger) flush() {
 func (sl *splunkLogger) close() {
 	close(sl.payloads)
 
-	returnAfter := time.Now().Add(2 * time.Second)
+	timeout := time.Now().Add(2 * time.Second)
 	for sl.active.Load() {
 		time.Sleep(100 * time.Millisecond)
 
-		if time.Now().After(returnAfter) {
+		if time.Now().After(timeout) {
 			break
 		}
 	}
@@ -242,6 +238,7 @@ func (sl *splunkLogger) close() {
 
 // event will create a new event and send it to the payloads channel. It will return
 // length of the event or an error if the event is invalid or the channel is full.
+// Event must be a valid JSON object with a trailing newline.
 func (sl *splunkLogger) event(b []byte) (int, error) {
 	buf := sl.pool.Get().(*bytes.Buffer)
 	buf.Truncate(0)

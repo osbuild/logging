@@ -57,9 +57,9 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 
 ## TODO
 
-* THIS IS A WORK IN PROGRESS DO NOT USE IT YET.
-* Trace/Span ID HTTP propagation does not work yet.
-* Document echo example and output.
+* Span ID must be struct (array of bytes, fixed length) with parent.child structure. Currently it concatenates the whole call stack which is dangerous and ineffective.
 * Echo logging proxy.
-* Propagation tests.
+* Tracing must be off by default.
+* Add stdlib middleware and rename slogecho to strcware
 * Fix tests.
+* Rebuild examples in READMEs.
