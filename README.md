@@ -140,10 +140,10 @@ doer.Do(r)
 First, the top-level span is created. It has no parent and new trace id `iggIwgmkOVigBFV` is generated which does not change through the whole transaction. The `subProcess` function is called and span is logged as finished:
 
 ```
-msg="span s1 started" span.name=s1 span.id=FopYHZY span.parent=0000000 span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
-msg="span subProcess started" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
-msg="span subProcess event an event" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.event="an event" span.at=18.963µs span.trace_id=iggIwgmkOVigBFV
-msg="span subProcess finished in 40.726µs" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.dur=40.726µs span.trace_id=iggIwgmkOVigBFV
+msg="span s1 started" span.name=s1 span.id=FopYHZY span.parent=0000000 span.trace=iggIwgmkOVigBFV
+msg="span subProcess started" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV
+msg="span subProcess event an event" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.event="an event" span.at=18.963µs
+msg="span subProcess finished in 40.726µs" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.dur=40.726µs
 ```
 
 Then couple of logging statements through various APIs are written: `log/slog`, `logrus` and `echo` packages are all used. Finally, a new HTTP call is made to service 2:
@@ -153,8 +153,10 @@ msg="slog msg" service=s1 trace_id=iggIwgmkOVigBFV
 msg="logrus msg" logrus=true service=s1
 msg="echo msg 1" echo=true
 msg="echo msg 2" echo=true service=s1
-msg="span http client request started" span.name="http client request" span.id=cYDvBzR span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+msg="span http client request started" span.name="http client request" span.id=cYDvBzR span.parent=FopYHZY span.trace=iggIwgmkOVigBFV
 ```
+
+Note that the "slog msg" entry also contains `trace_id` key in the root namespace. This key is automatically added by the `MultiHandler` for all log messages for correlation purposes. It also adds `build_id` with git sha, but this was disabled for the example output for better readability as well as Go source location information. Also note `trace_id` is missing from logrus and echo proxies as the API does not support passing of context into log records. These proxies are meant as a temporary solution until all log statements are rewritten to `log/slog`.
 
 Service 2 is another echo code that is more straightforward - it simply calls service 3:
 
@@ -170,8 +172,8 @@ doer.Do(req)
 Logging here is more simple, a new span of the whole handler is started and then HTTP wrapper creates a new HTTP call span. Note the trace ID does not change even if this is a different application:
 
 ```
-msg="span s2 started" span.name=s2 span.id=buakavZ span.parent=cYDvBzR span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
-msg="span http client request started" span.name="http client request" span.id=bcoxtVq span.parent=buakavZ span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+msg="span s2 started" span.name=s2 span.id=buakavZ span.parent=cYDvBzR span.trace=iggIwgmkOVigBFV
+msg="span http client request started" span.name="http client request" span.id=bcoxtVq span.parent=buakavZ span.trace=iggIwgmkOVigBFV
 ```
 
 Service 3 is a plain Go HTTP handler function that just calls `subProcess` function:
@@ -186,27 +188,27 @@ subProcess(ctx)
 Similarly to above handlers, a new span is started for the whole handler, then `subProcess` function is called, span finishes and records information about its duration:
 
 ```
-msg="span s3 started" span.name=s3 span.id=xJmKjiw span.parent=bcoxtVq span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
-msg="span subProcess started" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
-msg="span subProcess event an event" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV span.event="an event" span.at=68.331µs span.trace_id=iggIwgmkOVigBFV
-msg="span subProcess finished in 113.019µs" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV span.dur=113.019µs span.trace_id=iggIwgmkOVigBFV
-msg="span s3 finished in 1.02967ms" span.name=s3 span.id=xJmKjiw span.parent=bcoxtVq span.trace=iggIwgmkOVigBFV span.dur=1.02967ms span.trace_id=iggIwgmkOVigBFV
+msg="span s3 started" span.name=s3 span.id=xJmKjiw span.parent=bcoxtVq span.trace=iggIwgmkOVigBFV
+msg="span subProcess started" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV
+msg="span subProcess event an event" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV span.event="an event" span.at=68.331µs
+msg="span subProcess finished in 113.019µs" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV span.dur=113.019µs
+msg="span s3 finished in 1.02967ms" span.name=s3 span.id=xJmKjiw span.parent=bcoxtVq span.trace=iggIwgmkOVigBFV span.dur=1.02967ms
 ```
 
 Since the applications also have Echo middleware enabled which creates INFO level messages for each request, a detailed HTTP request/response appears in logs to and HTTP client and handler spans are concluded as well:
 
 ```
 msg="200: OK" request.method=GET request.host=localhost:8133 request.path=/ request.ip=[::1]:35934 request.length=0 request.body="" request.header.X-Strc-Trace-Id=[iggIwgmkOVigBFV] request.header.Accept-Encoding=[gzip] request.header.User-Agent=[Go-http-client/1.1] request.header.X-Strc-Span-Id=[buakavZ.bcoxtVq] request.user-agent=Go-http-client/1.1 response.latency=1.063409ms response.status=200 response.length=0 response.body="" trace_id=iggIwgmkOVigBFV
-msg="span http client request finished in 1.954212ms" span.name="http client request" span.id=bcoxtVq span.parent=buakavZ span.trace=iggIwgmkOVigBFV span.dur=1.954212ms span.trace_id=iggIwgmkOVigBFV
-msg="span s2 finished in 2.081902ms" span.name=s2 span.id=buakavZ span.parent=cYDvBzR span.trace=iggIwgmkOVigBFV span.dur=2.081902ms span.trace_id=iggIwgmkOVigBFV
+msg="span http client request finished in 1.954212ms" span.name="http client request" span.id=bcoxtVq span.parent=buakavZ span.trace=iggIwgmkOVigBFV span.dur=1.954212ms
+msg="span s2 finished in 2.081902ms" span.name=s2 span.id=buakavZ span.parent=cYDvBzR span.trace=iggIwgmkOVigBFV span.dur=2.081902ms
 ```
 
 We can see the request from one service to another took about 2 milliseconds. The same information but for service 1:
 
 ```
 msg="200: OK" request.method=GET request.host=localhost:8132 request.path=/ request.ip=[::1]:52726 request.length=0 response.latency=2.123283ms response.status=200 response.length=0 trace_id=iggIwgmkOVigBFV
-msg="span http client request finished in 2.680955ms" span.name="http client request" span.id=cYDvBzR span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.dur=2.680955ms span.trace_id=iggIwgmkOVigBFV
-msg="span s1 finished in 2.949458ms" span.name=s1 span.id=FopYHZY span.parent=0000000 span.trace=iggIwgmkOVigBFV span.dur=2.949458ms span.trace_id=iggIwgmkOVigBFV
+msg="span http client request finished in 2.680955ms" span.name="http client request" span.id=cYDvBzR span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.dur=2.680955ms
+msg="span s1 finished in 2.949458ms" span.name=s1 span.id=FopYHZY span.parent=0000000 span.trace=iggIwgmkOVigBFV span.dur=2.949458ms
 ```
 
 It can be a lot of information, this looks much better when filtered out of document/log databases like Kibana or Splunk where a lot of technical information like trace/span IDs can be omitted and only relevant information is shown.
@@ -225,5 +227,4 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 
 ## TODO
 
-* Auto trace_id adding via callback function (to allow UUID adding).
 * CLI tool for analyzing data from Splunk.

@@ -13,19 +13,46 @@ import (
 var _ slog.Handler = (*MultiHandler)(nil)
 
 var (
+	// TraceIDFieldKey is the key used to store the trace ID in the log record by MultiHandler.
+	// Set to empty string to disable this feature.
 	TraceIDFieldKey = "trace_id"
+
+	// BuildIDFieldKey is the key used to store the git commit in the log record by MultiHandler.
+	// Set to empty string to disable this feature.
+	BuildIDFieldKey = "build_id"
 )
 
 // MultiHandler distributes records to multiple slog.Handler
 type MultiHandler struct {
 	handlers []slog.Handler
+	inGroup  bool
+	callback MultiCallback
 }
 
+type MultiCallback func(context.Context, []slog.Attr) error
+
 // NewMultiHandler distributes records to multiple slog.Handler
-func NewMultiHandler(handlers ...slog.Handler) slog.Handler {
+func NewMultiHandler(handlers ...slog.Handler) *MultiHandler {
+	if BuildIDFieldKey != "" {
+		idAttr := slog.Attr{
+			Key:   BuildIDFieldKey,
+			Value: slog.StringValue(BuildCommit),
+		}
+
+		for i := range handlers {
+			handlers[i] = handlers[i].WithAttrs([]slog.Attr{idAttr})
+		}
+	}
+
 	return &MultiHandler{
 		handlers: handlers,
 	}
+}
+
+func NewMultiHandlerCallback(callback MultiCallback, handlers ...slog.Handler) *MultiHandler {
+	h := NewMultiHandler(handlers...)
+	h.callback = callback
+	return h
 }
 
 func (h *MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {
@@ -38,20 +65,35 @@ func (h *MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return false
 }
 
-func (h *MultiHandler) Handle(ctx context.Context, r slog.Record) error {
-	if id := TraceIDFromContext(ctx); id != EmptyTraceID && TraceIDFieldKey != "" {
-		idAttr := slog.Attr{
-			Key:   TraceIDFieldKey,
-			Value: slog.StringValue(id.String()),
+func (h *MultiHandler) Handle(ctx context.Context, recOrig slog.Record) error {
+	r := recOrig.Clone()
+
+	if !h.inGroup {
+		attrs := make([]slog.Attr, 0, 2)
+
+		// add optional trace_id attribute
+		if id := TraceIDFromContext(ctx); id != EmptyTraceID && TraceIDFieldKey != "" {
+			attrs = append(attrs, slog.Attr{
+				Key:   TraceIDFieldKey,
+				Value: slog.StringValue(id.String()),
+			})
 		}
-		r.AddAttrs(idAttr)
+
+		// add zero or more optional attributes
+		if h.callback != nil {
+			if err := h.callback(ctx, attrs); err != nil {
+				return err
+			}
+		}
+
+		r.AddAttrs(attrs...)
 	}
 
 	var errs []error
 	for i := range h.handlers {
 		if h.handlers[i].Enabled(ctx, r.Level) {
 			err := try(func() error {
-				return h.handlers[i].Handle(ctx, r.Clone())
+				return h.handlers[i].Handle(ctx, r)
 			})
 			if err != nil {
 				errs = append(errs, err)
@@ -68,7 +110,10 @@ func (h *MultiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		handlers[i] = h.handlers[i].WithAttrs(slices.Clone(attrs))
 	}
 
-	return NewMultiHandler(handlers...)
+	return &MultiHandler{
+		handlers: handlers,
+		inGroup:  true,
+	}
 }
 
 func (h *MultiHandler) WithGroup(name string) slog.Handler {
@@ -81,7 +126,10 @@ func (h *MultiHandler) WithGroup(name string) slog.Handler {
 		handlers[i] = h.handlers[i].WithGroup(name)
 	}
 
-	return NewMultiHandler(handlers...)
+	return &MultiHandler{
+		handlers: handlers,
+		inGroup:  true,
+	}
 }
 
 func try(callback func() error) (err error) {
