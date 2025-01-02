@@ -108,13 +108,114 @@ See [echo](pkg/echo) package for more info.
 
 ## Full example
 
-For a full example, see [example_web](internal/example_web/main.go). To see it in action:
+For a full example, see [example_web](internal/example_web/main.go). Three web applications are configured and a subprocess function is present:
+
+```
+func subProcess(ctx context.Context) {
+	span, ctx := strc.StartContext(ctx, "subProcess")
+	defer span.End()
+
+	span.Event("an event")
+}
+```
+
+Service 1 (s1) is an echo web app that calls the `subProcess` function and then makes a HTTP call to service 2:
+
+```
+span, ctx := strc.StartContext(c.Request().Context(), "s1")
+defer span.End()
+
+subProcess(ctx)
+
+slog.DebugContext(ctx, "slog msg", "service", "s1")
+logrus.WithField("service", "s1").Debug("logrus msg")
+c.Logger().Debug("echo msg 1")
+c.Logger().Debugj(map[string]interface{}{"service": "s1", "msg": "echo msg 2"})
+
+r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8132/", nil)
+doer := strc.NewTracingDoer(http.DefaultClient)
+doer.Do(r)
+```
+
+First, the top-level span is created. It has no parent and new trace id `iggIwgmkOVigBFV` is generated which does not change through the whole transaction. The `subProcess` function is called and span is logged as finished:
+
+```
+msg="span s1 started" span.name=s1 span.id=FopYHZY span.parent=0000000 span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+msg="span subProcess started" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+msg="span subProcess event an event" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.event="an event" span.at=18.963µs span.trace_id=iggIwgmkOVigBFV
+msg="span subProcess finished in 40.726µs" span.name=subProcess span.id=VycuAes span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.dur=40.726µs span.trace_id=iggIwgmkOVigBFV
+```
+
+Then couple of logging statements through various APIs are written: `log/slog`, `logrus` and `echo` packages are all used. Finally, a new HTTP call is made to service 2:
+
+```
+msg="slog msg" service=s1 trace_id=iggIwgmkOVigBFV
+msg="logrus msg" logrus=true service=s1
+msg="echo msg 1" echo=true
+msg="echo msg 2" echo=true service=s1
+msg="span http client request started" span.name="http client request" span.id=cYDvBzR span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+```
+
+Service 2 is another echo code that is more straightforward - it simply calls service 3:
+
+```
+span, ctx := strc.StartContext(c.Request().Context(), "s2")
+defer span.End()
+
+req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8133/", nil)
+doer := strc.NewTracingDoer(http.DefaultClient)
+doer.Do(req)
+```
+
+Logging here is more simple, a new span of the whole handler is started and then HTTP wrapper creates a new HTTP call span. Note the trace ID does not change even if this is a different application:
+
+```
+msg="span s2 started" span.name=s2 span.id=buakavZ span.parent=cYDvBzR span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+msg="span http client request started" span.name="http client request" span.id=bcoxtVq span.parent=buakavZ span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+```
+
+Service 3 is a plain Go HTTP handler function that just calls `subProcess` function:
+
+```
+span, ctx := strc.StartContext(r.Context(), "s3")
+defer span.End()
+
+subProcess(ctx)
+```
+
+Similarly to above handlers, a new span is started for the whole handler, then `subProcess` function is called, span finishes and records information about its duration:
+
+```
+msg="span s3 started" span.name=s3 span.id=xJmKjiw span.parent=bcoxtVq span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+msg="span subProcess started" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV span.trace_id=iggIwgmkOVigBFV
+msg="span subProcess event an event" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV span.event="an event" span.at=68.331µs span.trace_id=iggIwgmkOVigBFV
+msg="span subProcess finished in 113.019µs" span.name=subProcess span.id=XeJUmbS span.parent=xJmKjiw span.trace=iggIwgmkOVigBFV span.dur=113.019µs span.trace_id=iggIwgmkOVigBFV
+msg="span s3 finished in 1.02967ms" span.name=s3 span.id=xJmKjiw span.parent=bcoxtVq span.trace=iggIwgmkOVigBFV span.dur=1.02967ms span.trace_id=iggIwgmkOVigBFV
+```
+
+Since the applications also have Echo middleware enabled which creates INFO level messages for each request, a detailed HTTP request/response appears in logs to and HTTP client and handler spans are concluded as well:
+
+```
+msg="200: OK" request.method=GET request.host=localhost:8133 request.path=/ request.ip=[::1]:35934 request.length=0 request.body="" request.header.X-Strc-Trace-Id=[iggIwgmkOVigBFV] request.header.Accept-Encoding=[gzip] request.header.User-Agent=[Go-http-client/1.1] request.header.X-Strc-Span-Id=[buakavZ.bcoxtVq] request.user-agent=Go-http-client/1.1 response.latency=1.063409ms response.status=200 response.length=0 response.body="" trace_id=iggIwgmkOVigBFV
+msg="span http client request finished in 1.954212ms" span.name="http client request" span.id=bcoxtVq span.parent=buakavZ span.trace=iggIwgmkOVigBFV span.dur=1.954212ms span.trace_id=iggIwgmkOVigBFV
+msg="span s2 finished in 2.081902ms" span.name=s2 span.id=buakavZ span.parent=cYDvBzR span.trace=iggIwgmkOVigBFV span.dur=2.081902ms span.trace_id=iggIwgmkOVigBFV
+```
+
+We can see the request from one service to another took about 2 milliseconds. The same information but for service 1:
+
+```
+msg="200: OK" request.method=GET request.host=localhost:8132 request.path=/ request.ip=[::1]:52726 request.length=0 response.latency=2.123283ms response.status=200 response.length=0 trace_id=iggIwgmkOVigBFV
+msg="span http client request finished in 2.680955ms" span.name="http client request" span.id=cYDvBzR span.parent=FopYHZY span.trace=iggIwgmkOVigBFV span.dur=2.680955ms span.trace_id=iggIwgmkOVigBFV
+msg="span s1 finished in 2.949458ms" span.name=s1 span.id=FopYHZY span.parent=0000000 span.trace=iggIwgmkOVigBFV span.dur=2.949458ms span.trace_id=iggIwgmkOVigBFV
+```
+
+It can be a lot of information, this looks much better when filtered out of document/log databases like Kibana or Splunk where a lot of technical information like trace/span IDs can be ommited and only relevant information is shown.
+
+To see it in action:
 
 ```
 go run github.com/osbuild/logging/internal/example_web/
 ```
-
-See [logrus](pkg/logrus) package for more info.
 
 ## AUTHORS and LICENSE
 

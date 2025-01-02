@@ -70,7 +70,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 	s2.HidePort = true
 	s2.Use(echo.WrapMiddleware(middleware))
 	s2.GET("/", func(c echo.Context) error {
-		span, ctx := strc.StartContext(c.Request().Context(), "s1")
+		span, ctx := strc.StartContext(c.Request().Context(), "s2")
 		defer span.End()
 
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8133/", nil)
