@@ -24,6 +24,7 @@ func process(ctx context.Context) {
 func main() {
 	// tracing logs via DebugLevel by default
 	strc.Level = slog.LevelInfo
+	strc.SetLogger(slog.Default())
 
 	span, ctx := strc.StartContext(context.Background(), "main")
 	defer span.End()

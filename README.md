@@ -124,7 +124,6 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 
 ## TODO
 
-* Tracing must be off by default! Noop handler to be the default one.
 * Auto trace_id adding via callback function (to allow UUID adding).
 * Rebuild examples in READMEs.
 * CLI tool for analyzing data from Splunk.

@@ -129,14 +129,23 @@ func process(ctx context.Context) {
 }
 
 func main() {
-	// tracing logs via DebugLevel by default
-	strc.Level = slog.LevelInfo
-
 	span, ctx := strc.StartContext(context.Background(), "main")
 	defer span.End()
 
 	process(ctx)
 }
+```
+
+Note the above example will print nothing as tracing is disabled by default, two things must be done. First, a `slog` destination logger must be set:
+
+```
+strc.SetLogger(slog.Default())
+```
+
+Second, the destination logger must have debug level handing enabled. The default logging level can be increased if needed:
+
+```
+strc.Level = slog.LevelInfo
 ```
 
 Run the example with the following command:

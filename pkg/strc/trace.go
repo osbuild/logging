@@ -25,14 +25,14 @@ var ParentIDName string = "parent"
 // SkipSource is a flag that disables source logging.
 var SkipSource bool
 
-var customLogger = slog.Default().WithGroup(SpanGroupName)
+var destination = slog.New(&NoopHandler{})
 
 func SetLogger(lg *slog.Logger) {
-	customLogger = lg.WithGroup(SpanGroupName)
+	destination = lg.WithGroup(SpanGroupName)
 }
 
 func logger() *slog.Logger {
-	return customLogger
+	return destination
 }
 
 type Span struct {
