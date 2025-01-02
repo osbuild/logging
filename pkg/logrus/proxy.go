@@ -14,13 +14,14 @@ type Proxy struct {
 
 var proxy *Proxy
 
-// NewProxy creates a new Proxy
+// NewProxyFor creates a new Proxy for a particular logger
 func NewProxyFor(logger *slog.Logger) *Proxy {
 	return &Proxy{
 		dest: logger.With(slog.Bool("logrus", true)),
 	}
 }
 
+// NewProxy creates a new Proxy for the standard logger
 func NewProxy() *Proxy {
 	return NewProxyFor(slog.Default())
 }

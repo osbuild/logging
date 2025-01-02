@@ -118,9 +118,7 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 
 ## TODO
 
-* Echo logging proxy.
-* Tracing must be off by default.
+* Tracing must be off by default.
 * Auto trace_id adding via callback function (to allow UUID adding).
-* Fix tests.
 * Rebuild examples in READMEs.
 * CLI tool for analyzing data from Splunk.

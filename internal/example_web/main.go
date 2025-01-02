@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/labstack/echo/v4"
+	echoproxy "github.com/osbuild/logging/pkg/echo"
 	"github.com/osbuild/logging/pkg/logrus"
 	"github.com/osbuild/logging/pkg/splunk"
 	"github.com/osbuild/logging/pkg/strc"
@@ -44,6 +45,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 	s1 := echo.New()
 	s1.HideBanner = true
 	s1.HidePort = true
+	s1.Logger = echoproxy.NewProxyFor(logger)
 	s1.Use(echo.WrapMiddleware(middleware))
 	s1.GET("/", func(c echo.Context) error {
 		span, ctx := strc.StartContext(c.Request().Context(), "s1")
@@ -53,7 +55,8 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 
 		slog.DebugContext(ctx, "slog msg", "service", "s1")
 		logrus.WithField("service", "s1").Debug("logrus msg")
-		c.Logger().Debugj(map[string]interface{}{"service": "s1", "msg": "echo msg"})
+		c.Logger().Debug("echo msg 1")
+		c.Logger().Debugj(map[string]interface{}{"service": "s1", "msg": "echo msg 2"})
 
 		r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8132/", nil)
 		doer := strc.NewTracingDoer(http.DefaultClient)
