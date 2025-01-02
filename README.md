@@ -100,6 +100,12 @@ go run github.com/osbuild/logging/internal/example_logrus/
 
 See [logrus](pkg/logrus) package for more info.
 
+### echo - proxy to slog
+
+See [example_web](internal/example_web/main.go) for a fully working example.
+
+See [echo](pkg/echo) package for more info.
+
 ## Full example
 
 For a full example, see [example_web](internal/example_web/main.go). To see it in action:
