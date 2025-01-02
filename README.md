@@ -31,7 +31,7 @@ or better this:
 slog.InfoContext(ctx, "user was authenticated", "user_id", user.ID)
 ```
 
-You do not need to know much about `slog` other than it provides four logging functions (levels) and you can optionally provide zero or more key-value pairs. It is possible to create groups (sub-fields) with `WithGroup` or `slog.Group` attriute, instatiate logger using `With` functions and furhter optimize attribute creation but this is only useful when dealing with many logging statements (e.g. in loops). For a normal day to day logging in osbuild project, you do not need any of that.
+You do not need to know much about `slog` other than it provides four logging functions (levels) and you can optionally provide zero or more key-value pairs. It is possible to create groups (sub-fields) with `WithGroup` or `slog.Group` attribute, instantiate logger using `With` functions and further optimize attribute creation but this is only useful when dealing with many logging statements (e.g. in loops). For a normal day to day logging in osbuild project, you do not need any of that. If you still need a good introduction to the library, search the web or [read this short blogpost](https://lukas.zapletalovi.com/posts/2023/about-structured-logging-in-go121/).
 
 Please do all logging with lowercase letters, since the standard practice is to use lowercase for Go errors as well, it works nicely hand in hand. This is useful for error wrapping and you do not need to think about the case anymore.
 
@@ -209,7 +209,7 @@ msg="span http client request finished in 2.680955ms" span.name="http client req
 msg="span s1 finished in 2.949458ms" span.name=s1 span.id=FopYHZY span.parent=0000000 span.trace=iggIwgmkOVigBFV span.dur=2.949458ms span.trace_id=iggIwgmkOVigBFV
 ```
 
-It can be a lot of information, this looks much better when filtered out of document/log databases like Kibana or Splunk where a lot of technical information like trace/span IDs can be ommited and only relevant information is shown.
+It can be a lot of information, this looks much better when filtered out of document/log databases like Kibana or Splunk where a lot of technical information like trace/span IDs can be omitted and only relevant information is shown.
 
 To see it in action:
 
@@ -226,5 +226,4 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 ## TODO
 
 * Auto trace_id adding via callback function (to allow UUID adding).
-* Rebuild examples in READMEs.
 * CLI tool for analyzing data from Splunk.
