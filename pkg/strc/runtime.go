@@ -11,29 +11,26 @@ var (
 	// BuildCommit is the git source commit (only first BuildCommitChars characters)
 	BuildCommit string
 
-	// BuildTime represents build date and time
-	BuildTime string
-
-	// BuildGoVersion carries Go version the binary was built with
-	BuildGoVersion string
+	// BuildCustom overrides the build commit with a custom string
+	BuildCustom string
 )
 
 func init() {
-	BuildTime = "N/A"
-	BuildCommit = "HEAD"
-
 	if bi, ok := debug.ReadBuildInfo(); ok {
-		BuildGoVersion = bi.GoVersion
-
 		for _, bs := range bi.Settings {
 			switch bs.Key {
 			case "vcs.revision":
 				if len(bs.Value) > BuildCommitChars {
 					BuildCommit = bs.Value[0:BuildCommitChars]
 				}
-			case "vcs.time":
-				BuildTime = bs.Value
 			}
 		}
 	}
+}
+
+func BuildID() string {
+	if BuildCustom != "" {
+		return BuildCustom
+	}
+	return BuildCommit
 }

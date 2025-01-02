@@ -36,7 +36,7 @@ func NewMultiHandler(handlers ...slog.Handler) *MultiHandler {
 	if BuildIDFieldKey != "" {
 		idAttr := slog.Attr{
 			Key:   BuildIDFieldKey,
-			Value: slog.StringValue(BuildCommit),
+			Value: slog.StringValue(BuildID()),
 		}
 
 		for i := range handlers {
