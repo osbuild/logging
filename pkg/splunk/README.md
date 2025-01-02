@@ -9,6 +9,7 @@ A Splunk event handler for `log/slog`. Features:
 * Memory pool for event byte buffers.
 * Utilizes JSON handler from the standard library.
 * Built for performance (no JSON encoding or decoding).
+* Statistics for better observability.
 
 ### How to use
 

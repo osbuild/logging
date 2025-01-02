@@ -8,7 +8,7 @@ A simple tracing library. When OpenTelemetry is a bit too much. Features:
 * Simple exporting slog handler for callback-based exporters.
 * Adding "trace_id" root field to all logs for easy correlation between logs and traces.
 
-### Instrumentation
+### Instrumentation
 
 Add the following code to function you want to trace:
 
@@ -28,19 +28,18 @@ span.Event("an event")
 All results are stored in `log/slog` records. Each span creates one record with group named `span` with the following data:
 
 * `span.name`: span name 
-* `span.id`: span ID (child spands are concatenated with `.`) 
+* `span.id`: span ID
+* `span.parent`: parent ID or `0000000` when there is no parent
 * `span.trace`: trace ID 
 * `span.event`: event name (only on event) 
 * `span.at`: duration wihtin a span (only on event) 
 * `span.duration`: trace duration (only when span ends) 
 * `span.time`: log time (can be enabled in exporter) 
 
-Spans natually end up in log sink too, for better readability, the following fields are added to the root namespace:
+Spans end up in log sink too, for better readability, the following fields are added to the root namespace:
 
 * `msg`: message in the form `span XXX started` or `event XXX`
 * `trace_id`: correlation ID added to all logging messages (not only traces)
-
-Adding the correlation ID can be turned off by setting `strc.TraceIDFieldKey = ""`.
 
 ### Propagation
 
@@ -96,6 +95,13 @@ doer.Do(r)
 
 The `TracingDoer` can be optionally configured to log detailed debug information like request or reply HTTP headers or even full body. This is turned off by default, see `strc.TracingDoerConfig` for more info.
 
+Example headers generated or parsed by HTTP client & middleware code:
+
+```
+X-Strc-Trace-ID: LOlIxiHprrrvHqD
+X-Strc-Span-ID: VIPEcES.yuufaHI
+```
+
 ### Full example
 
 ```go
@@ -142,13 +148,13 @@ go run github.com/osbuild/logging/internal/example_print/
 Which prints something like (removed time and log level for readability):
 
 ```
-span main started span.name=main span.id=qXiOgxhiBYkm span.trace=AHaORhHAsMmqqNRF span.source=example_print/main.go:28
-span process started span.name=process span.id=qXiOgxhiBYkm.QWBZAYZgymiY span.trace=AHaORhHAsMmqqNRF span.source=example_print/main.go:18
-span subProcess started span.name=subProcess span.id=qXiOgxhiBYkm.QWBZAYZgymiY.dLuGWZTAeFsP span.trace=AHaORhHAsMmqqNRF span.source=example_print/main.go:11
-span subProcess event an event span.name=subProcess span.id=qXiOgxhiBYkm.QWBZAYZgymiY.dLuGWZTAeFsP span.trace=AHaORhHAsMmqqNRF span.event="an event" span.at=27.342µs span.source=example_print/main.go:14
-span subProcess finished in 74.529µs span.name=subProcess span.id=qXiOgxhiBYkm.QWBZAYZgymiY.dLuGWZTAeFsP span.trace=AHaORhHAsMmqqNRF span.dur=65.397µs span.source=example_print/main.go:15
-span process finished in 131.065µs span.name=process span.id=qXiOgxhiBYkm.QWBZAYZgymiY span.trace=AHaORhHAsMmqqNRF span.dur=122.761µs span.source=example_print/main.go:22
-span main finished in 377.097µs span.name=main span.id=qXiOgxhiBYkm span.trace=AHaORhHAsMmqqNRF span.dur=369.847µs span.source=example_print/main.go:32
+span main started span.name=main span.id=pEnFDti span.parent=0000000 span.trace=SVyjVloJYogpNPq span.source=main.go:28
+span process started span.name=process span.id=fRfWksO span.parent=pEnFDti span.trace=SVyjVloJYogpNPq span.source=main.go:18
+span subProcess started span.name=subProcess span.id=gSouhiv span.parent=fRfWksO span.trace=SVyjVloJYogpNPq span.source=main.go:11
+span subProcess event an event span.name=subProcess span.id=gSouhiv span.parent=fRfWksO span.trace=SVyjVloJYogpNPq span.event="an event" span.at=21.644µs span.source=main.go:14
+span subProcess finished in 47.355µs span.name=subProcess span.id=gSouhiv span.parent=fRfWksO span.trace=SVyjVloJYogpNPq span.dur=47.355µs span.source=main.go:15
+span process finished in 94.405µs span.name=process span.id=fRfWksO span.parent=pEnFDti span.trace=SVyjVloJYogpNPq span.dur=94.405µs span.source=main.go:22
+span main finished in 285.246µs span.name=main span.id=pEnFDti span.parent=0000000 span.trace=SVyjVloJYogpNPq span.dur=285.246µs span.source=main.go:32
 ```
 
 ### Exporting data

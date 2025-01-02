@@ -33,7 +33,7 @@ slog.InfoContext(ctx, "user was authenticated", "user_id", user.ID)
 
 You do not need to know much about `slog` other than it provides four logging functions (levels) and you can optionally provide zero or more key-value pairs. It is possible to create groups (sub-fields) with `WithGroup` or `slog.Group` attriute, instatiate logger using `With` functions and furhter optimize attribute creation but this is only useful when dealing with many logging statements (e.g. in loops). For a normal day to day logging in osbuild project, you do not need any of that.
 
-Please do all logging with lowercase letters, since the standard practice is to use lowercase for Go errors as well, it works nicely hand in hand. This is useful for error wrapping and you do not need to think about case anymore.
+Please do all logging with lowercase letters, since the standard practice is to use lowercase for Go errors as well, it works nicely hand in hand. This is useful for error wrapping and you do not need to think about the case anymore.
 
 Always pass `context.Context` down the stack, this allows for automatic log correlation. You do not need to do anything and all log statements will have `trace_id` that can be used for searching in Kibana or Splunk. Example:
 
@@ -124,7 +124,7 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 
 ## TODO
 
-* Tracing must be off by default.
+* Tracing must be off by default! Noop handler to be the default one.
 * Auto trace_id adding via callback function (to allow UUID adding).
 * Rebuild examples in READMEs.
 * CLI tool for analyzing data from Splunk.
