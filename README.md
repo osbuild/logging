@@ -219,6 +219,15 @@ To see it in action:
 go run github.com/osbuild/logging/internal/example_web/
 ```
 
+## Build ID
+
+To customize the `build_id` value added to all logs for non-git builds (e.g. in an RPM build), do:
+
+```
+go build -ldflags="-X 'github.com/osbuild/logging.BuildCustom=1234567'" github.com/osbuild/logging/internal/example_web/
+```
+
+
 ## AUTHORS and LICENSE
 
 License: MIT
@@ -227,4 +236,6 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 
 ## TODO
 
+* Common initialization config and function package `sinit` and documentation.
+* Cloudwatch slog handler documentation.
 * CLI tool for analyzing data from Splunk.

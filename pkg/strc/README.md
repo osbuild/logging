@@ -212,10 +212,4 @@ Run the example with the following command:
 go run github.com/osbuild/logging/internal/example_export/
 ```
 
-To customize the `build_id` value externally (e.g. in an RPM build):
-
-```
-go build -ldflags="-X 'github.com/osbuild/logging/pkg/strc.BuildCustom=1234567'" github.com/osbuild/logging/internal/example_web/
-```
-
 For the best performance, we a dedicated exporting handler should be written customized to the output format. For more info, see [writing an slog handler](https://pkg.go.dev/log/slog#hdr-Writing_a_handler).

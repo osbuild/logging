@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+
+	"github.com/osbuild/logging"
 )
 
 // Ported from https://github.com/samber/slog-multi to avoid a dependency
@@ -36,7 +38,7 @@ func NewMultiHandler(handlers ...slog.Handler) *MultiHandler {
 	if BuildIDFieldKey != "" {
 		idAttr := slog.Attr{
 			Key:   BuildIDFieldKey,
-			Value: slog.StringValue(BuildID()),
+			Value: slog.StringValue(logging.BuildID()),
 		}
 
 		for i := range handlers {

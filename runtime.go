@@ -1,4 +1,4 @@
-package strc
+package logging
 
 import "runtime/debug"
 
