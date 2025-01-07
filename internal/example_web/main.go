@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,7 +9,6 @@ import (
 	"github.com/labstack/echo/v4"
 	echoproxy "github.com/osbuild/logging/pkg/echo"
 	"github.com/osbuild/logging/pkg/logrus"
-	"github.com/osbuild/logging/pkg/splunk"
 	"github.com/osbuild/logging/pkg/strc"
 )
 
@@ -92,16 +90,14 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 		subProcess(ctx)
 	})
 	mux3.Handle("/", loggingMiddleware(h3))
-	mux3.Handle("/services/collector/event", http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	go srv3.ListenAndServe()
 
 	return s1, s2, srv3
 }
 
 func main() {
-	hSplunk := splunk.NewSplunkHandler(context.Background(), slog.LevelDebug, splunkURL, "t", "s", "h")
-	hStdout := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: cleaner})
-	logger := slog.New(strc.NewMultiHandler(hSplunk, hStdout))
+	h := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: cleaner})
+	logger := slog.New(h)
 	slog.SetDefault(logger)
 	strc.SetLogger(logger)
 	strc.SkipSource = true // for better readability
@@ -111,9 +107,6 @@ func main() {
 	defer s1.Close()
 	defer s2.Close()
 	defer s3.Close()
-	defer hSplunk.Close() // last in, first out (blocks until all logs are sent)
 
 	http.Get("http://localhost:8131/")
-	stats := hSplunk.Statistics()
-	fmt.Printf("sent %d events to splunk mock\n", stats.EventCount)
 }
