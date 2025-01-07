@@ -12,8 +12,6 @@ import (
 	"github.com/osbuild/logging/pkg/strc"
 )
 
-const splunkURL = "http://localhost:8133/services/collector/event"
-
 // for better readability
 func cleaner(groups []string, a slog.Attr) slog.Attr {
 	if a.Key == "time" || a.Key == "level" {
