@@ -186,6 +186,14 @@ func (p *Proxy) Panicln(args ...any) {
 	p.Panic(args...)
 }
 
+func GetLevel() Level {
+	return proxy.GetLevel()
+}
+
+func SetLevel(level Level) {
+	proxy.SetLevel(level)
+}
+
 func Trace(args ...any) {
 	proxy.Trace(args...)
 }
