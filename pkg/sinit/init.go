@@ -123,6 +123,10 @@ type CloudWatchConfig struct {
 type TracingConfig struct {
 	// Enabled is a flag to enable tracing
 	Enabled bool
+
+	// ContextCallback is an optional callback function that is called for each log entry
+	// to add additional attributes to the log entry.
+	ContextCallback func(ctx context.Context, a []slog.Attr) error
 }
 
 var initOnce sync.Once
@@ -209,7 +213,11 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		}
 
 		// create the combined handler
-		handlerMulti = strc.NewMultiHandler(handlers...)
+		if config.TracingConfig.ContextCallback != nil {
+			handlerMulti = strc.NewMultiHandlerCallback(config.TracingConfig.ContextCallback, handlers...)
+		} else {
+			handlerMulti = strc.NewMultiHandler(handlers...)
+		}
 
 		// configure slog
 		logger := slog.New(handlerMulti)
