@@ -13,6 +13,13 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	logrus.SetDefault(logrus.NewProxy())
 
+	logrus.Traceln("trace")
+	logrus.Debugln("debug")
+	logrus.Infoln("info")
+	logrus.Warnln("warn")
+	logrus.Errorln("error")
+	logrus.Panicln("panic")
+
 	logrus.Trace("a", "b", "c")
 	logrus.Debug("a", "b", "c")
 	logrus.Info("a", "b", "c")
@@ -24,6 +31,7 @@ func main() {
 	logrus.Debugf("number: %d", 42)
 	logrus.Infof("number: %d", 42)
 	logrus.Warnf("number: %d", 42)
+	logrus.Warningf("number: %d", 42)
 	logrus.Errorf("number: %d", 42)
 	logrus.Panicf("number: %d", 42)
 
@@ -40,4 +48,11 @@ func main() {
 	logrus.WithField("key", "value").Warn("msg with field")
 	logrus.WithField("key", "value").Error("msg with field")
 	logrus.WithField("key", "value").Panic("msg with field")
+
+	logrus.WithFields(logrus.Fields{
+		"str":   "value",
+		"int":   42,
+		"bool":  true,
+		"float": 3.14,
+	}).Trace("msg with fields")
 }

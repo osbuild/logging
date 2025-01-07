@@ -6,6 +6,20 @@ import (
 	"log/slog"
 )
 
+type Fields map[string]any
+
+type Level uint32
+
+const (
+	PanicLevel Level = iota
+	FatalLevel
+	ErrorLevel
+	WarnLevel
+	InfoLevel
+	DebugLevel
+	TraceLevel
+)
+
 // Proxy is a proxy type for logrus.Logger
 type Proxy struct {
 	dest *slog.Logger
@@ -30,16 +44,32 @@ func SetDefault(p *Proxy) {
 	proxy = p
 }
 
+func (p *Proxy) GetLevel() Level {
+	return DebugLevel
+}
+
+func (p *Proxy) SetLevel(level Level) {}
+
 func (p *Proxy) WithContext(ctx context.Context) *Proxy {
 	p.ctx = ctx
 
 	return p
 }
 
-// WithField converts all values to strings
 func (p *Proxy) WithField(key string, value any) *Proxy {
 	return &Proxy{
-		dest: p.dest.With(slog.String(key, fmt.Sprint(value))),
+		dest: p.dest.With(slog.Any(key, value)),
+		ctx:  p.ctx,
+	}
+}
+
+func (p *Proxy) WithFields(fields Fields) *Proxy {
+	a := make([]any, 0, len(fields))
+	for k, v := range fields {
+		a = append(a, slog.Any(k, v))
+	}
+	return &Proxy{
+		dest: p.dest.With(a...),
 		ctx:  p.ctx,
 	}
 }
@@ -108,6 +138,10 @@ func (p *Proxy) Warnf(format string, args ...any) {
 	p.Warn(fmt.Sprintf(format, args...))
 }
 
+func (p *Proxy) Warningf(format string, args ...any) {
+	p.Warn(fmt.Sprintf(format, args...))
+}
+
 func (p *Proxy) Errorf(format string, args ...any) {
 	p.Error(fmt.Sprintf(format, args...))
 }
@@ -118,6 +152,38 @@ func (p *Proxy) Fatalf(format string, args ...any) {
 
 func (p *Proxy) Panicf(format string, args ...any) {
 	p.Panic(fmt.Sprintf(format, args...))
+}
+
+func (p *Proxy) Traceln(args ...any) {
+	p.Debug(args...)
+}
+
+func (p *Proxy) Debugln(args ...any) {
+	p.Debug(args...)
+}
+
+func (p *Proxy) Infoln(args ...any) {
+	p.Info(args...)
+}
+
+func (p *Proxy) Warnln(args ...any) {
+	p.Warn(args...)
+}
+
+func (p *Proxy) Warningln(args ...any) {
+	p.Warn(args...)
+}
+
+func (p *Proxy) Errorln(args ...any) {
+	p.Error(args...)
+}
+
+func (p *Proxy) Fatalln(args ...any) {
+	p.Fatal(args...)
+}
+
+func (p *Proxy) Panicln(args ...any) {
+	p.Panic(args...)
 }
 
 func Trace(args ...any) {
@@ -164,6 +230,10 @@ func Warnf(format string, args ...any) {
 	proxy.Warnf(format, args...)
 }
 
+func Warningf(format string, args ...any) {
+	proxy.Warnf(format, args...)
+}
+
 func Errorf(format string, args ...any) {
 	proxy.Errorf(format, args...)
 }
@@ -180,6 +250,42 @@ func WithField(key string, value any) *Proxy {
 	return proxy.WithField(key, value)
 }
 
+func WithFields(fields Fields) *Proxy {
+	return proxy.WithFields(fields)
+}
+
 func WithContext(ctx context.Context) *Proxy {
 	return proxy.WithContext(ctx)
+}
+
+func Traceln(args ...any) {
+	proxy.Traceln(args...)
+}
+
+func Debugln(args ...any) {
+	proxy.Debugln(args...)
+}
+
+func Infoln(args ...any) {
+	proxy.Infoln(args...)
+}
+
+func Warnln(args ...any) {
+	proxy.Warnln(args...)
+}
+
+func Warningln(args ...any) {
+	proxy.Warningln(args...)
+}
+
+func Errorln(args ...any) {
+	proxy.Errorln(args...)
+}
+
+func Fatalln(args ...any) {
+	proxy.Fatalln(args...)
+}
+
+func Panicln(args ...any) {
+	proxy.Panicln(args...)
 }
