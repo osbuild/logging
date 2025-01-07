@@ -23,6 +23,6 @@ func main() {
 	slog.SetDefault(logger)
 	strc.SetLogger(logger)
 
-	span, _ := strc.StartContext(context.Background(), "main")
+	span, _ := strc.Start(context.Background(), "main")
 	defer span.End()
 }

@@ -25,7 +25,7 @@ func cleaner(groups []string, a slog.Attr) slog.Attr {
 }
 
 func subProcess(ctx context.Context) {
-	span, ctx := strc.StartContext(ctx, "subProcess")
+	span, ctx := strc.Start(ctx, "subProcess")
 	defer span.End()
 
 	span.Event("an event")
@@ -48,7 +48,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 	s1.Logger = echoproxy.NewProxyFor(logger)
 	s1.Use(echo.WrapMiddleware(middleware))
 	s1.GET("/", func(c echo.Context) error {
-		span, ctx := strc.StartContext(c.Request().Context(), "s1")
+		span, ctx := strc.Start(c.Request().Context(), "s1")
 		defer span.End()
 
 		subProcess(ctx)
@@ -70,7 +70,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 	s2.HidePort = true
 	s2.Use(echo.WrapMiddleware(middleware))
 	s2.GET("/", func(c echo.Context) error {
-		span, ctx := strc.StartContext(c.Request().Context(), "s2")
+		span, ctx := strc.Start(c.Request().Context(), "s2")
 		defer span.End()
 
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8133/", nil)
@@ -86,7 +86,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 		Handler: mux3,
 	}
 	h3 := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		span, ctx := strc.StartContext(r.Context(), "s3")
+		span, ctx := strc.Start(r.Context(), "s3")
 		defer span.End()
 
 		subProcess(ctx)

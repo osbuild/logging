@@ -53,7 +53,7 @@ func callerPtr(skip int) string {
 	return file + ":" + fmt.Sprint(line)
 }
 
-func StartContext(ctx context.Context, name string, args ...any) (*Span, context.Context) {
+func Start(ctx context.Context, name string, args ...any) (*Span, context.Context) {
 	tid := TraceIDFromContext(ctx)
 	if tid == EmptyTraceID {
 		tid = NewTraceID()

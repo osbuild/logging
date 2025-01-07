@@ -136,14 +136,14 @@ func TestLogExporter(t *testing.T) {
 }
 
 func subProcess(ctx context.Context) {
-	span, ctx := StartContext(ctx, "subProcess")
+	span, ctx := Start(ctx, "subProcess")
 	defer span.End()
 
 	span.Event("e")
 }
 
 func process(ctx context.Context) {
-	span, ctx := StartContext(ctx, "process", "k1", "v1")
+	span, ctx := Start(ctx, "process", "k1", "v1")
 	defer span.End()
 
 	subProcess(ctx)

@@ -52,7 +52,7 @@ func main() {
 	}
 	defer sinit.Flush()
 
-	span, ctx := strc.StartContext(context.Background(), "main")
+	span, ctx := strc.Start(context.Background(), "main")
 
 	slog.DebugContext(ctx, "message",
 		slog.Bool("b1", true),

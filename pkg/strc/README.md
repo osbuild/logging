@@ -13,7 +13,7 @@ A simple tracing library. When OpenTelemetry is a bit too much. Features:
 Add the following code to function you want to trace:
 
 ```go
-span, ctx := strc.StartContext(ctx, "span name")
+span, ctx := strc.Start(ctx, "span name")
 defer span.End()
 ```
 
@@ -115,21 +115,21 @@ import (
 )
 
 func subProcess(ctx context.Context) {
-	span, ctx := strc.StartContext(ctx, "subProcess")
+	span, ctx := strc.Start(ctx, "subProcess")
 	defer span.End()
 
 	span.Event("an event")
 }
 
 func process(ctx context.Context) {
-	span, ctx := strc.StartContext(ctx, "process")
+	span, ctx := strc.Start(ctx, "process")
 	defer span.End()
 
 	subProcess(ctx)
 }
 
 func main() {
-	span, ctx := strc.StartContext(context.Background(), "main")
+	span, ctx := strc.Start(context.Background(), "main")
 	defer span.End()
 
 	process(ctx)
@@ -196,7 +196,7 @@ func main() {
 	slog.SetDefault(logger)
 	strc.SetLogger(logger)
 
-	span, _ := strc.StartContext(context.Background(), "main")
+	span, _ := strc.Start(context.Background(), "main")
 	defer span.End()
 }
 ```

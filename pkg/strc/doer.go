@@ -60,7 +60,7 @@ func NewTracingDoerWithConfig(doer HttpRequestDoer, config TracingDoerConfig) *T
 }
 
 func (td *TracingDoer) Do(req *http.Request) (*http.Response, error) {
-	span, ctx := StartContext(req.Context(), "http client request")
+	span, ctx := Start(req.Context(), "http client request")
 	defer span.End()
 
 	logger := slog.Default().WithGroup("client").With(

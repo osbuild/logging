@@ -8,14 +8,14 @@ import (
 )
 
 func subProcess(ctx context.Context) {
-	span, ctx := strc.StartContext(ctx, "subProcess")
+	span, ctx := strc.Start(ctx, "subProcess")
 	defer span.End()
 
 	span.Event("an event")
 }
 
 func process(ctx context.Context) {
-	span, ctx := strc.StartContext(ctx, "process")
+	span, ctx := strc.Start(ctx, "process")
 	defer span.End()
 
 	subProcess(ctx)
@@ -26,7 +26,7 @@ func main() {
 	strc.Level = slog.LevelInfo
 	strc.SetLogger(slog.Default())
 
-	span, ctx := strc.StartContext(context.Background(), "main")
+	span, ctx := strc.Start(context.Background(), "main")
 	defer span.End()
 
 	process(ctx)

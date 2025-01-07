@@ -53,14 +53,14 @@ Of course, small functions that will unlikely do any logging or call an external
 There is additional package named `strc` which provides simple tracing, use this when you want to be able to tell how much time was spent in specific block of code (e.g. a function). These blocks are called "spans" and are nested, the tracing information carries over to external systems as well, this is all automatic as long as you call osbuild services you do not need to do anything:
 
 ```go
-span, ctx := strc.StartContext(ctx, "calculating something big")
+span, ctx := strc.Start(ctx, "calculating something big")
 defer span.End()
 ```
 
-Note the `ctx` variable is overwritten by the `StartContext` function, it is best to overwrite it not creating a copy that can be confusing:
+Note the `ctx` variable is overwritten by the `Start` function, it is best to overwrite it not creating a copy that can be confusing:
 
 ```go
-span, ctx2 := strc.StartContext(ctx, "calculating something big")
+span, ctx2 := strc.Start(ctx, "calculating something big")
 defer span.End()
 
 doSomething(ctx) // wrong, should be ctx2
@@ -134,7 +134,7 @@ For a full example, see [example_web](internal/example_web/main.go). Three web a
 
 ```
 func subProcess(ctx context.Context) {
-	span, ctx := strc.StartContext(ctx, "subProcess")
+	span, ctx := strc.Start(ctx, "subProcess")
 	defer span.End()
 
 	span.Event("an event")
@@ -144,7 +144,7 @@ func subProcess(ctx context.Context) {
 Service 1 (s1) is an echo web app that calls the `subProcess` function and then makes a HTTP call to service 2:
 
 ```
-span, ctx := strc.StartContext(c.Request().Context(), "s1")
+span, ctx := strc.Start(c.Request().Context(), "s1")
 defer span.End()
 
 subProcess(ctx)
@@ -183,7 +183,7 @@ Note that the "slog msg" entry also contains `trace_id` key in the root namespac
 Service 2 is another echo code that is more straightforward - it simply calls service 3:
 
 ```
-span, ctx := strc.StartContext(c.Request().Context(), "s2")
+span, ctx := strc.Start(c.Request().Context(), "s2")
 defer span.End()
 
 req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8133/", nil)
@@ -201,7 +201,7 @@ msg="span http client request started" span.name="http client request" span.id=b
 Service 3 is a plain Go HTTP handler function that just calls `subProcess` function:
 
 ```
-span, ctx := strc.StartContext(r.Context(), "s3")
+span, ctx := strc.Start(r.Context(), "s3")
 defer span.End()
 
 subProcess(ctx)
