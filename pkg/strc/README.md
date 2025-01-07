@@ -4,7 +4,7 @@ A simple tracing library. When OpenTelemetry is a bit too much. Features:
 
 * Simple code instrumentation.
 * Serialization into `slog` (structured logging library).
-* Handler with multiple subhandlers for futher processing.
+* Handler with multiple sub-handlers for further processing.
 * Simple exporting slog handler for callback-based exporters.
 * Adding "trace_id" root field to all logs for easy correlation between logs and traces.
 
@@ -32,7 +32,7 @@ All results are stored in `log/slog` records. Each span creates one record with 
 * `span.parent`: parent ID or `0000000` when there is no parent
 * `span.trace`: trace ID 
 * `span.event`: event name (only on event) 
-* `span.at`: duration wihtin a span (only on event) 
+* `span.at`: duration within a span (only on event) 
 * `span.duration`: trace duration (only when span ends) 
 * `span.time`: log time (can be enabled in exporter) 
 
@@ -201,7 +201,7 @@ func main() {
 }
 ```
 
-There is additional `NewMultiHandlerCallback` which allows adding custom attributes from context via a callback function. This is useful when additional correlation id (e.g. background job UUID) needs to be added to every single regular log record. The multi-handler creates the following new keys in the root element:
+There is additional `NewMultiHandlerCustom` which allows adding custom attributes from context via a callback function. This is useful when additional correlation id (e.g. background job UUID) needs to be added to every single regular log record. The multi-handler creates the following new keys in the root element:
 
 * `trace_id` - trace ID (disable by setting `strc.TraceIDFieldKey` to empty string)
 * `build_id` - build Git sha (disable by setting `strc.BuildIDFieldKey` to empty string)

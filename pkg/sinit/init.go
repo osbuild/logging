@@ -124,6 +124,10 @@ type TracingConfig struct {
 	// Enabled is a flag to enable tracing
 	Enabled bool
 
+	// CustomAttrs is a list of custom static attributes to add to every log entry. To add
+	// dynamic attributes, use ContextCallback that can access context.
+	CustomAttrs []slog.Attr
+
 	// ContextCallback is an optional callback function that is called for each log entry
 	// to add additional attributes to the log entry.
 	ContextCallback func(ctx context.Context, a []slog.Attr) error
@@ -213,11 +217,11 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		}
 
 		// create the combined handler
-		if config.TracingConfig.ContextCallback != nil {
-			handlerMulti = strc.NewMultiHandlerCallback(config.TracingConfig.ContextCallback, handlers...)
-		} else {
-			handlerMulti = strc.NewMultiHandler(handlers...)
-		}
+		handlerMulti = strc.NewMultiHandlerCustom(
+			config.TracingConfig.CustomAttrs,
+			config.TracingConfig.ContextCallback,
+			handlers...,
+		)
 
 		// configure slog
 		logger := slog.New(handlerMulti)

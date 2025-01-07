@@ -35,26 +35,31 @@ type MultiCallback func(context.Context, []slog.Attr) error
 
 // NewMultiHandler distributes records to multiple slog.Handler
 func NewMultiHandler(handlers ...slog.Handler) *MultiHandler {
+	return NewMultiHandlerCustom(nil, nil, handlers...)
+}
+
+// NewMultiHandlerCustom distributes records to multiple slog.Handler
+// with custom attributes and callback. Pass static slice of attributes added
+// to the every record, and a callback that can add dynamic attributes from the context.
+func NewMultiHandlerCustom(attrs []slog.Attr, callback MultiCallback, handlers ...slog.Handler) *MultiHandler {
+	a := make([]slog.Attr, 0, len(attrs)+1)
+	a = append(a, attrs...)
+
 	if BuildIDFieldKey != "" {
-		idAttr := slog.Attr{
+		a = append(a, slog.Attr{
 			Key:   BuildIDFieldKey,
 			Value: slog.StringValue(logging.BuildID()),
-		}
+		})
+	}
 
-		for i := range handlers {
-			handlers[i] = handlers[i].WithAttrs([]slog.Attr{idAttr})
-		}
+	for i := range handlers {
+		handlers[i] = handlers[i].WithAttrs(a)
 	}
 
 	return &MultiHandler{
 		handlers: handlers,
+		callback: callback,
 	}
-}
-
-func NewMultiHandlerCallback(callback MultiCallback, handlers ...slog.Handler) *MultiHandler {
-	h := NewMultiHandler(handlers...)
-	h.callback = callback
-	return h
 }
 
 func (h *MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {

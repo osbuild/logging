@@ -1,6 +1,6 @@
 module github.com/osbuild/logging
 
-go 1.23.3
+go 1.21.0
 
 require (
 	github.com/coreos/go-systemd/v22 v22.5.0
