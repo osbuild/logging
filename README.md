@@ -80,6 +80,16 @@ go run github.com/osbuild/logging/internal/example_splunk/
 
 See [splunk](pkg/splunk) package for more info.
 
+### journal - slog handler for systemd-journal
+
+See [example_journal](internal/example_journal/main.go) for a fully working example. To see it in action:
+
+```
+go run github.com/osbuild/logging/internal/example_journal/
+```
+
+See [journal](pkg/journal) package for more info.
+
 ### strc - simple tracing via slog
 
 See [example_print](internal/example_print/main.go) and [example_export](internal/example_export/main.go) for fully working examples. To see it in action:
@@ -105,6 +115,18 @@ See [logrus](pkg/logrus) package for more info.
 See [example_web](internal/example_web/main.go) for a fully working example.
 
 See [echo](pkg/echo) package for more info.
+
+### sinit - common initialization config and function
+
+A common initialization for:
+
+* Standard output
+* System journal
+* Splunk
+* Cloudwatch
+* Sentry
+
+See [example_sinit](internal/example_sinit/main.go) for a fully working example.
 
 ## Full example
 
@@ -227,7 +249,6 @@ To customize the `build_id` value added to all logs for non-git builds (e.g. in 
 go build -ldflags="-X 'github.com/osbuild/logging.BuildCustom=1234567'" github.com/osbuild/logging/internal/example_web/
 ```
 
-
 ## AUTHORS and LICENSE
 
 License: MIT
@@ -236,6 +257,5 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 
 ## TODO
 
-* Common initialization config and function package `sinit` and documentation.
-* Cloudwatch slog handler documentation.
+* Update journal to use SendVals if [this patch](https://github.com/coreos/go-systemd/pull/454) gets accepted.
 * CLI tool for analyzing data from Splunk.

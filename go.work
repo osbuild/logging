@@ -2,9 +2,11 @@ go 1.23.3
 
 use (
 	.
-	./internal/example_web
 	./internal/example_export
+	./internal/example_journal
 	./internal/example_logrus
 	./internal/example_print
+	./internal/example_sinit
 	./internal/example_splunk
+	./internal/example_web
 )

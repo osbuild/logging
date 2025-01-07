@@ -12,7 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/osbuild/logging/pkg/cloudwatch"
+	"github.com/lzap/cloudwatchwriter2"
+	"github.com/osbuild/logging/pkg/journal"
 	"github.com/osbuild/logging/pkg/logrus"
 	"github.com/osbuild/logging/pkg/splunk"
 	"github.com/osbuild/logging/pkg/strc"
@@ -25,11 +26,15 @@ import (
 type LoggingConfig struct {
 	StdoutConfig StdoutConfig
 
+	JournalConfig JournalConfig
+
 	SplunkConfig SplunkConfig
 
 	CloudWatchConfig CloudWatchConfig
 
 	SentryConfig SentryConfig
+
+	TracingConfig TracingConfig
 }
 
 // StdoutConfig is the configuration for the standard output.
@@ -43,6 +48,16 @@ type StdoutConfig struct {
 
 	// Format is the log format to use for stdout logging. Possible values are "json" and "text".
 	Format string
+}
+
+// JournalConfig is the configuration for the system journal.
+type JournalConfig struct {
+	// Enabled is a flag to enable this output.
+	Enabled bool
+
+	// Logging level for this output. Strings "debug", "info", "warn", "error", "fatal", "panic" are accepted.
+	// Keep in mind that log/slog has only 4 levels: Debug, Info, Warn, Error. Default value is "debug".
+	Level string
 }
 
 // SplunkConfig is the configuration for the Splunk output.
@@ -104,10 +119,16 @@ type CloudWatchConfig struct {
 	AWSLogStream string
 }
 
+// TracingConfig is the configuration for strc.
+type TracingConfig struct {
+	// Enabled is a flag to enable tracing
+	Enabled bool
+}
+
 var initOnce sync.Once
 var handlerMulti *strc.MultiHandler
 var handlerSplunk *splunk.SplunkHandler
-var handlerCloudWatch *cloudwatch.CloudwatchHandler
+var handlerCloudWatch *cloudwatchwriter2.Handler
 
 // InitializeLogging initializes the logging system with the provided configuration. Use Flush to ensure all logs are written before exiting.
 // Subsequent calls to InitializeLogging will have no effect and will not return any error.
@@ -135,6 +156,11 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 			handlers = append(handlers, h)
 		}
 
+		if config.JournalConfig.Enabled {
+			h := journal.NewHandler(ctx, parseLevel(config.JournalConfig.Level))
+			handlers = append(handlers, h)
+		}
+
 		if config.SplunkConfig.Enabled {
 			handlerSplunk = splunk.NewSplunkHandler(ctx,
 				parseLevel(config.SplunkConfig.Level),
@@ -148,7 +174,7 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 
 		if config.CloudWatchConfig.Enabled {
 			var err error
-			handlerCloudWatch, err = cloudwatch.New(cloudwatch.CloudwatchConfig{
+			handlerCloudWatch, err = cloudwatchwriter2.NewHandler(cloudwatchwriter2.HandlerConfig{
 				Level:        parseLevel(config.CloudWatchConfig.Level),
 				AddSource:    true,
 				AWSRegion:    config.CloudWatchConfig.AWSRegion,
@@ -190,7 +216,9 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		slog.SetDefault(logger)
 
 		// configure tracing
-		strc.SetLogger(logger)
+		if config.TracingConfig.Enabled {
+			strc.SetLogger(logger)
+		}
 
 		// configure logrus proxy
 		logrus.SetDefault(logrus.NewProxyFor(logger))

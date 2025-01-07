@@ -224,11 +224,14 @@ func (sl *splunkLogger) flush() {
 // the client will not accept any new events, all attemtps to send new events will return
 // ErrFullOrClosed.
 func (sl *splunkLogger) close() {
+	if !sl.active.Load() {
+		return
+	}
 	close(sl.payloads)
 
 	timeout := time.Now().Add(2 * time.Second)
 	for sl.active.Load() {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 
 		if time.Now().After(timeout) {
 			break
