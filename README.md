@@ -70,6 +70,18 @@ These are all the basics.
 
 Further information about individual packages:
 
+### sinit - common initialization config and function
+
+A common initialization for:
+
+* Standard output
+* System journal
+* Splunk
+* Cloudwatch
+* Sentry
+
+See [example_sinit](internal/example_sinit/main.go) for a fully working example.
+
 ### splunk - high-performance slog handler for Splunk
 
 See [example_splunk](internal/example_splunk/main.go) for a fully working example. To see it in action:
@@ -115,18 +127,6 @@ See [logrus](pkg/logrus) package for more info.
 See [example_web](internal/example_web/main.go) for a fully working example.
 
 See [echo](pkg/echo) package for more info.
-
-### sinit - common initialization config and function
-
-A common initialization for:
-
-* Standard output
-* System journal
-* Splunk
-* Cloudwatch
-* Sentry
-
-See [example_sinit](internal/example_sinit/main.go) for a fully working example.
 
 ## Full example
 
