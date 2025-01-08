@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// This code is coming from https://github.com/samber/slog-http
+
 var (
 	TraceIDKey = "trace_id"
 	SpanIDKey  = "span_id"

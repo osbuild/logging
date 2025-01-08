@@ -1,6 +1,6 @@
 ## echo
 
-A temporary `echo` proxy to `log/slog`. Only used for the transition period until our projects are fully migrated. Please keep in mind this is an incomplete implementation.
+A temporary `echo` proxy to `log/slog`. Only used for the transition period until our projects are fully migrated. Please keep in mind this is an incomplete implementation, only functions used in osbuild project are present.
 
 ### How to use
 

@@ -9,6 +9,8 @@ import (
 	"net/http"
 )
 
+// This code is coming from https://github.com/samber/slog-http
+
 var _ WrapResponseWriter = (*bodyWriter)(nil)
 
 type WrapResponseWriter interface {

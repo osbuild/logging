@@ -1,10 +1,6 @@
 ## logrus
 
-A temporary `logrus` proxy to `log/slog`. Only used for the transition period until our projects are fully migrated. Please keep in mind this is an incomplete implementation. Features:
-
-* Basic functions and methods implemented.
-* Context support.
-* Fields are ignored.
+A temporary `logrus` proxy to `log/slog`. Only used for the transition period until our projects are fully migrated. Please keep in mind this is an incomplete implementation, only functions used in osbuild projects are present.
 
 ### How to use
 

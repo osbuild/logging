@@ -3,7 +3,7 @@
 A simple tracing library. When OpenTelemetry is a bit too much. Features:
 
 * Simple code instrumentation.
-* Serialization into `slog` (structured logging library).
+* Serialization into `log/slog` (structured logging library).
 * Handler with multiple sub-handlers for further processing.
 * Simple exporting slog handler for callback-based exporters.
 * Adding "trace_id" root field to all logs for easy correlation between logs and traces.
@@ -17,7 +17,7 @@ span, ctx := strc.Start(ctx, "span name")
 defer span.End()
 ```
 
-Optionally, additional "savepoints" can be inserted:
+Optionally, additional "save points" can be inserted:
 
 ```go
 span.Event("an event")
@@ -39,7 +39,8 @@ All results are stored in `log/slog` records. Each span creates one record with 
 Spans end up in log sink too, for better readability, the following fields are added to the root namespace:
 
 * `msg`: message in the form `span XXX started` or `event XXX`
-* `trace_id`: correlation ID added to all logging messages (not only traces)
+* `trace_id` - trace ID (disable by setting `strc.TraceIDFieldKey` to empty string)
+* `build_id` - build Git sha (disable by setting `strc.BuildIDFieldKey` to empty string)
 
 ### Propagation
 

@@ -6,13 +6,18 @@ import (
 	"strings"
 )
 
+// This code is coming from https://github.com/samber/slog-http
+
+// Filter is a function that determines whether a request should be logged or not.
 type Filter func(w WrapResponseWriter, r *http.Request) bool
 
-// Basic
+// Accept returns a filter that accepts requests that pass the given filter.
 func Accept(filter Filter) Filter { return filter }
+
+// Ignore returns a filter that ignores requests that pass the given filter.
 func Ignore(filter Filter) Filter { return filter }
 
-// Method
+// AcceptMethod returns a filter that accepts requests with the given methods.
 func AcceptMethod(methods ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		reqMethod := strings.ToLower(r.Method)
@@ -27,6 +32,7 @@ func AcceptMethod(methods ...string) Filter {
 	}
 }
 
+// IgnoreMethod returns a filter that ignores requests with the given methods.
 func IgnoreMethod(methods ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		reqMethod := strings.ToLower(r.Method)
@@ -41,7 +47,7 @@ func IgnoreMethod(methods ...string) Filter {
 	}
 }
 
-// Status
+// AcceptStatus returns a filter that accepts requests with the given status codes.
 func AcceptStatus(statuses ...int) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, status := range statuses {
@@ -54,6 +60,7 @@ func AcceptStatus(statuses ...int) Filter {
 	}
 }
 
+// IgnoreStatus returns a filter that ignores requests with the given status codes.
 func IgnoreStatus(statuses ...int) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, status := range statuses {
@@ -66,31 +73,7 @@ func IgnoreStatus(statuses ...int) Filter {
 	}
 }
 
-func AcceptStatusGreaterThan(status int) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		return w.Status() > status
-	}
-}
-
-func IgnoreStatusLessThan(status int) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		return w.Status() < status
-	}
-}
-
-func AcceptStatusGreaterThanOrEqual(status int) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		return w.Status() >= status
-	}
-}
-
-func IgnoreStatusLessThanOrEqual(status int) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		return w.Status() <= status
-	}
-}
-
-// Path
+// AcceptPath returns a filter that accepts requests with the given paths.
 func AcceptPath(urls ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, url := range urls {
@@ -103,6 +86,7 @@ func AcceptPath(urls ...string) Filter {
 	}
 }
 
+// IgnorePath returns a filter that ignores requests with the given paths.
 func IgnorePath(urls ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, url := range urls {
@@ -115,6 +99,7 @@ func IgnorePath(urls ...string) Filter {
 	}
 }
 
+// AcceptPathContains returns a filter that accepts requests with paths that contain the given parts.
 func AcceptPathContains(parts ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, part := range parts {
@@ -127,6 +112,7 @@ func AcceptPathContains(parts ...string) Filter {
 	}
 }
 
+// IgnorePathContains returns a filter that ignores requests with paths that contain the given parts.
 func IgnorePathContains(parts ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, part := range parts {
@@ -139,6 +125,7 @@ func IgnorePathContains(parts ...string) Filter {
 	}
 }
 
+// AcceptPathPrefix returns a filter that accepts requests with paths that have the given prefixes.
 func AcceptPathPrefix(prefixs ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
@@ -151,6 +138,7 @@ func AcceptPathPrefix(prefixs ...string) Filter {
 	}
 }
 
+// IgnorePathPrefix returns a filter that ignores requests with paths that have the given prefixes.
 func IgnorePathPrefix(prefixs ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
@@ -163,6 +151,7 @@ func IgnorePathPrefix(prefixs ...string) Filter {
 	}
 }
 
+// AcceptPathSuffix returns a filter that accepts requests with paths that have the given suffixes.
 func AcceptPathSuffix(prefixs ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, prefix := range prefixs {
@@ -175,6 +164,7 @@ func AcceptPathSuffix(prefixs ...string) Filter {
 	}
 }
 
+// IgnorePathSuffix returns a filter that ignores requests with paths that have the given suffixes.
 func IgnorePathSuffix(suffixs ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, suffix := range suffixs {
@@ -187,6 +177,7 @@ func IgnorePathSuffix(suffixs ...string) Filter {
 	}
 }
 
+// AcceptPathMatch returns a filter that accepts requests with paths that match the given regular expressions.
 func AcceptPathMatch(regs ...regexp.Regexp) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, reg := range regs {
@@ -199,6 +190,7 @@ func AcceptPathMatch(regs ...regexp.Regexp) Filter {
 	}
 }
 
+// IgnorePathMatch returns a filter that ignores requests with paths that match the given regular expressions.
 func IgnorePathMatch(regs ...regexp.Regexp) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, reg := range regs {
@@ -211,7 +203,7 @@ func IgnorePathMatch(regs ...regexp.Regexp) Filter {
 	}
 }
 
-// Host
+// AcceptHost returns a filter that accepts requests with the given hosts.
 func AcceptHost(hosts ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, host := range hosts {
@@ -224,6 +216,7 @@ func AcceptHost(hosts ...string) Filter {
 	}
 }
 
+// IgnoreHost returns a filter that ignores requests with the given hosts.
 func IgnoreHost(hosts ...string) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, host := range hosts {
@@ -236,78 +229,7 @@ func IgnoreHost(hosts ...string) Filter {
 	}
 }
 
-func AcceptHostContains(parts ...string) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		for _, part := range parts {
-			if strings.Contains(r.URL.Host, part) {
-				return true
-			}
-		}
-
-		return false
-	}
-}
-
-func IgnoreHostContains(parts ...string) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		for _, part := range parts {
-			if strings.Contains(r.URL.Host, part) {
-				return false
-			}
-		}
-
-		return true
-	}
-}
-
-func AcceptHostPrefix(prefixs ...string) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		for _, prefix := range prefixs {
-			if strings.HasPrefix(r.URL.Host, prefix) {
-				return true
-			}
-		}
-
-		return false
-	}
-}
-
-func IgnoreHostPrefix(prefixs ...string) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		for _, prefix := range prefixs {
-			if strings.HasPrefix(r.URL.Host, prefix) {
-				return false
-			}
-		}
-
-		return true
-	}
-}
-
-func AcceptHostSuffix(prefixs ...string) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		for _, prefix := range prefixs {
-			if strings.HasPrefix(r.URL.Host, prefix) {
-				return true
-			}
-		}
-
-		return false
-	}
-}
-
-func IgnoreHostSuffix(suffixs ...string) Filter {
-	return func(w WrapResponseWriter, r *http.Request) bool {
-		for _, suffix := range suffixs {
-			if strings.HasSuffix(r.URL.Host, suffix) {
-				return false
-			}
-		}
-
-		return true
-	}
-}
-
+// AcceptHostContains returns a filter that accepts requests with hosts that contain the given regular expression.
 func AcceptHostMatch(regs ...regexp.Regexp) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, reg := range regs {
@@ -320,6 +242,7 @@ func AcceptHostMatch(regs ...regexp.Regexp) Filter {
 	}
 }
 
+// IgnoreHostContains returns a filter that ignores requests with hosts that contain the given regular expression.
 func IgnoreHostMatch(regs ...regexp.Regexp) Filter {
 	return func(w WrapResponseWriter, r *http.Request) bool {
 		for _, reg := range regs {
