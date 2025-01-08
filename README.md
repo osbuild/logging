@@ -50,6 +50,21 @@ doSomething(ctx)
 
 Of course, small functions that will unlikely do any logging or call an external service do not need a context.
 
+The library provides trace correlation from HTTP headers, middleware can be used both with plain HTTP handlers or echo library:
+
+```go
+middleware := strc.NewMiddleware(logger)
+e.Use(echo.WrapMiddleware(middleware))
+```
+
+Trace correlation information can be easily passed into other services using a simple HTTP decorator:
+
+```go
+r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://home.zapletalovi.com/", nil)
+doer := strc.NewTracingDoer(http.DefaultClient)
+doer.Do(r)
+```
+
 There is additional package named `strc` which provides simple tracing, use this when you want to be able to tell how much time was spent in specific block of code (e.g. a function). These blocks are called "spans" and are nested, the tracing information carries over to external systems as well, this is all automatic as long as you call osbuild services you do not need to do anything:
 
 ```go
