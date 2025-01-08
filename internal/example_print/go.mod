@@ -1,6 +1,6 @@
 module github.com/osbuild/logging/internal/example_print
 
-go 1.23.3
+go 1.21
 
 replace github.com/osbuild/logging => ../..
 
