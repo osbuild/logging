@@ -1,0 +1,183 @@
+package collect
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"runtime"
+	"sync"
+)
+
+// CollectorHandler is a test handler that buffers log entries. This is useful for testing
+// of log output.
+type CollectorHandler struct {
+	level     slog.Level
+	addTime   bool
+	addSource bool
+	goas      []groupOrAttrs
+	data      *data
+}
+
+type groupOrAttrs struct {
+	group string
+	attrs []slog.Attr
+}
+
+// prevent mutex copying
+type data struct {
+	fields []map[string]any
+	mu     sync.RWMutex
+}
+
+var _ slog.Handler = (*CollectorHandler)(nil)
+
+// NewTestHandler creates a new BufferHandler.
+func NewTestHandler(level slog.Level, addTime, addSource bool) *CollectorHandler {
+	h := &CollectorHandler{
+		level:     level,
+		addTime:   addTime,
+		addSource: addSource,
+		data: &data{
+			fields: make([]map[string]any, 0),
+			mu:     sync.RWMutex{},
+		},
+	}
+	return h
+}
+
+func (h *CollectorHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return level >= h.level
+}
+
+func (h *CollectorHandler) add(m map[string]any) {
+	h.data.mu.Lock()
+	defer h.data.mu.Unlock()
+
+	h.data.fields = append(h.data.fields, m)
+}
+
+func (h *CollectorHandler) Handle(ctx context.Context, r slog.Record) error {
+	m := make(map[string]any)
+
+	m[slog.LevelKey] = r.Level.String()
+	m[slog.MessageKey] = r.Message
+
+	if h.addTime && !r.Time.IsZero() {
+		m[slog.TimeKey] = r.Time
+	}
+
+	if r.PC != 0 && h.addSource {
+		fs := runtime.CallersFrames([]uintptr{r.PC})
+		f, _ := fs.Next()
+		m[slog.SourceKey] = fmt.Sprintf("%s:%d", f.File, f.Line)
+	}
+
+	var groups []string
+	for _, goa := range h.goas {
+		if goa.group != "" {
+			groups = append(groups, goa.group)
+		} else {
+			for _, a := range goa.attrs {
+				h.appendAttr(a, m, groups)
+			}
+		}
+	}
+
+	r.Attrs(func(a slog.Attr) bool {
+		h.appendAttr(a, m, groups)
+		return true
+	})
+
+	h.add(m)
+	return nil
+}
+
+func (h *CollectorHandler) appendAttr(a slog.Attr, m map[string]any, g []string) {
+	a.Value = a.Value.Resolve()
+	if a.Equal(slog.Attr{}) {
+		return
+	}
+
+	switch a.Value.Kind() {
+	case slog.KindGroup:
+		attrs := a.Value.Group()
+		if len(attrs) == 0 {
+			return
+		}
+		if a.Key == "" {
+			for _, ga := range attrs {
+				h.appendAttr(ga, m, g)
+			}
+		}
+		m[a.Key] = make(map[string]any)
+		for _, ga := range attrs {
+			h.appendAttr(ga, m[a.Key].(map[string]any), g)
+		}
+	default:
+		add_p(a, m, g)
+	}
+}
+
+func add_p(a slog.Attr, m map[string]any, g []string) {
+	if len(g) == 0 {
+		m[a.Key] = a.Value.Any()
+		return
+	}
+	group := g[0]
+	if _, ok := m[group]; !ok {
+		m[group] = make(map[string]any)
+	}
+
+	add_p(a, m[group].(map[string]any), g[1:])
+}
+
+func (h *CollectorHandler) withGroupOrAttrs(goa groupOrAttrs) *CollectorHandler {
+	h2 := *h
+	h2.goas = make([]groupOrAttrs, len(h.goas)+1)
+	copy(h2.goas, h.goas)
+	h2.goas[len(h2.goas)-1] = goa
+	return &h2
+}
+
+func (h *CollectorHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	if len(attrs) == 0 {
+		return h
+	}
+
+	return h.withGroupOrAttrs(groupOrAttrs{attrs: attrs})
+}
+
+func (h *CollectorHandler) WithGroup(name string) slog.Handler {
+	if name == "" {
+		return h
+	}
+	return h.withGroupOrAttrs(groupOrAttrs{group: name})
+}
+
+// Last returns the last entry that was logged or an empty map
+func (h *CollectorHandler) Last() map[string]any {
+	h.data.mu.RLock()
+	defer h.data.mu.RUnlock()
+
+	i := len(h.data.fields) - 1
+	if i < 0 {
+		return make(map[string]any)
+	}
+	return h.data.fields[i]
+}
+
+// All returns all entries that were logged.
+func (h *CollectorHandler) All() []map[string]any {
+	h.data.mu.RLock()
+	defer h.data.mu.RUnlock()
+
+	return h.data.fields
+}
+
+// Reset removes all Entries from this test hook.
+func (h *CollectorHandler) Reset() {
+	h.data.mu.Lock()
+	defer h.data.mu.Unlock()
+
+	h.data.fields = make([]map[string]any, 0)
+}

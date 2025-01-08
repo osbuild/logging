@@ -45,7 +45,7 @@ func SetDefault(p *Proxy) {
 }
 
 func (p *Proxy) GetLevel() Level {
-	return DebugLevel
+	return TraceLevel
 }
 
 func (p *Proxy) SetLevel(level Level) {}

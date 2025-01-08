@@ -257,5 +257,6 @@ Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-compo
 
 ## TODO
 
+* Add more tests based on the stdlib `slogtest.TestHandler`
 * Update journal to use SendVals if [this patch](https://github.com/coreos/go-systemd/pull/454) gets accepted.
 * CLI tool for analyzing data from Splunk.
