@@ -40,6 +40,10 @@ func NewProxy() *Proxy {
 	return NewProxyFor(slog.Default())
 }
 
+func Default() *Proxy {
+	return proxy
+}
+
 func SetDefault(p *Proxy) {
 	proxy = p
 }
