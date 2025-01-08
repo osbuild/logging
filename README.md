@@ -3,9 +3,9 @@
 Common code for:
 
 * logging
-* tracing
-* exporting
 * correlation
+* exporting
+* tracing
 
 Together with some best practices on how to do logging and tracing in osbuild projects.
 
