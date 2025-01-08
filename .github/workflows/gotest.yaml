@@ -43,5 +43,5 @@
             with:
               version: "latest"
           - run: |
-              go test -v ./...
+              make unit-tests
     
