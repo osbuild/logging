@@ -2,7 +2,7 @@
 
 Common code for:
 
-* logging
+* logging initialization
 * correlation
 * exporting
 * tracing
