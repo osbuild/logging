@@ -9,7 +9,7 @@ import (
 
 func TestStandardLibraryHelper(t *testing.T) {
 	var result []map[string]any
-	th := NewTestHandler(slog.LevelDebug, true, true)
+	th := NewTestHandler(slog.LevelDebug, true, true, true)
 	err := slogtest.TestHandler(th, func() []map[string]any {
 		result = th.All()
 		return parseLogEntries(t, result)

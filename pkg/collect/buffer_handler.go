@@ -14,6 +14,7 @@ type CollectorHandler struct {
 	level     slog.Level
 	addTime   bool
 	addSource bool
+	addLevel  bool
 	goas      []groupOrAttrs
 	data      *data
 }
@@ -32,11 +33,12 @@ type data struct {
 var _ slog.Handler = (*CollectorHandler)(nil)
 
 // NewTestHandler creates a new BufferHandler.
-func NewTestHandler(level slog.Level, addTime, addSource bool) *CollectorHandler {
+func NewTestHandler(level slog.Level, addTime, addSource, addLevel bool) *CollectorHandler {
 	h := &CollectorHandler{
 		level:     level,
 		addTime:   addTime,
 		addSource: addSource,
+		addLevel:  addLevel,
 		data: &data{
 			fields: make([]map[string]any, 0),
 			mu:     sync.RWMutex{},
@@ -59,8 +61,11 @@ func (h *CollectorHandler) add(m map[string]any) {
 func (h *CollectorHandler) Handle(ctx context.Context, r slog.Record) error {
 	m := make(map[string]any)
 
-	m[slog.LevelKey] = r.Level.String()
 	m[slog.MessageKey] = r.Message
+
+	if h.addLevel {
+		m[slog.LevelKey] = r.Level.String()
+	}
 
 	if h.addTime && !r.Time.IsZero() {
 		m[slog.TimeKey] = r.Time

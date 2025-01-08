@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 )
 
 type Fields map[string]any
@@ -78,43 +79,47 @@ func (p *Proxy) WithFields(fields Fields) *Proxy {
 	}
 }
 
-func (p *Proxy) Trace(args ...any) {
-	if p.ctx != nil {
-		p.dest.Debug(fmt.Sprint(args...))
-	} else {
-		p.dest.DebugContext(p.ctx, fmt.Sprint(args...))
+func anyToString(a []any) []string {
+	s := make([]string, 0, len(a))
+	for _, v := range a {
+		s = append(s, fmt.Sprint(v))
 	}
+	return s
+}
+
+func (p *Proxy) Trace(args ...any) {
+	p.Debug(args...)
 }
 
 func (p *Proxy) Debug(args ...any) {
 	if p.ctx != nil {
-		p.dest.Debug(fmt.Sprint(args...))
+		p.dest.Debug(strings.Join(anyToString(args), " "))
 	} else {
-		p.dest.DebugContext(p.ctx, fmt.Sprint(args...))
+		p.dest.DebugContext(p.ctx, strings.Join(anyToString(args), " "))
 	}
 }
 
 func (p *Proxy) Info(args ...any) {
 	if p.ctx != nil {
-		p.dest.Info(fmt.Sprint(args...))
+		p.dest.Info(strings.Join(anyToString(args), " "))
 	} else {
-		p.dest.InfoContext(p.ctx, fmt.Sprint(args...))
+		p.dest.InfoContext(p.ctx, strings.Join(anyToString(args), " "))
 	}
 }
 
 func (p *Proxy) Warn(args ...any) {
 	if p.ctx != nil {
-		p.dest.Warn(fmt.Sprint(args...))
+		p.dest.Warn(strings.Join(anyToString(args), " "))
 	} else {
-		p.dest.WarnContext(p.ctx, fmt.Sprint(args...))
+		p.dest.WarnContext(p.ctx, strings.Join(anyToString(args), " "))
 	}
 }
 
 func (p *Proxy) Error(args ...any) {
 	if p.ctx != nil {
-		p.dest.Error(fmt.Sprint(args...))
+		p.dest.Error(strings.Join(anyToString(args), " "))
 	} else {
-		p.dest.ErrorContext(p.ctx, fmt.Sprint(args...))
+		p.dest.ErrorContext(p.ctx, strings.Join(anyToString(args), " "))
 	}
 }
 

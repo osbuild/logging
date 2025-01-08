@@ -143,6 +143,10 @@ See [example_web](internal/example_web/main.go) for a fully working example.
 
 See [echo](pkg/echo) package for more info.
 
+### collect - special handler only used for testing
+
+See [collect](pkg/collect) package for more info.
+
 ## Full example
 
 For a full example, see [example_web](internal/example_web/main.go). Three web applications are configured and a subprocess function is present:

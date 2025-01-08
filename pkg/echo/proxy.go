@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 
 	"github.com/labstack/gommon/log"
 )
@@ -84,8 +85,16 @@ func (p *Proxy) SetHeader(h string) {
 	// noop
 }
 
+func anyToString(a []any) []string {
+	s := make([]string, 0, len(a))
+	for _, v := range a {
+		s = append(s, fmt.Sprint(v))
+	}
+	return s
+}
+
 func (p *Proxy) Print(args ...interface{}) {
-	p.dest.Info(fmt.Sprint(args...))
+	p.dest.Info(strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Printf(format string, args ...interface{}) {
@@ -106,7 +115,7 @@ func (p *Proxy) Printj(j log.JSON) {
 }
 
 func (p *Proxy) Debug(args ...interface{}) {
-	p.dest.Debug(fmt.Sprint(args...))
+	p.dest.Debug(strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Debugf(format string, args ...interface{}) {
@@ -127,7 +136,7 @@ func (p *Proxy) Debugj(j log.JSON) {
 }
 
 func (p *Proxy) Info(args ...interface{}) {
-	p.dest.Info(fmt.Sprint(args...))
+	p.dest.Info(strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Infof(format string, args ...interface{}) {
@@ -148,7 +157,7 @@ func (p *Proxy) Infoj(j log.JSON) {
 }
 
 func (p *Proxy) Warn(args ...interface{}) {
-	p.dest.Warn(fmt.Sprint(args...))
+	p.dest.Warn(strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Warnf(format string, args ...interface{}) {
@@ -169,7 +178,7 @@ func (p *Proxy) Warnj(j log.JSON) {
 }
 
 func (p *Proxy) Error(args ...interface{}) {
-	p.dest.Error(fmt.Sprint(args...))
+	p.dest.Error(strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Errorf(format string, args ...interface{}) {
@@ -190,7 +199,7 @@ func (p *Proxy) Errorj(j log.JSON) {
 }
 
 func (p *Proxy) Fatal(args ...interface{}) {
-	p.dest.Error(fmt.Sprint(args...))
+	p.dest.Error(strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Fatalf(format string, args ...interface{}) {
@@ -211,7 +220,7 @@ func (p *Proxy) Fatalj(j log.JSON) {
 }
 
 func (p *Proxy) Panic(args ...interface{}) {
-	p.dest.Error(fmt.Sprint(args...))
+	p.dest.Error(strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Panicf(format string, args ...interface{}) {
