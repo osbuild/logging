@@ -33,6 +33,10 @@ func SetDefault(p *Proxy) {
 	proxy = p
 }
 
+func Default() *Proxy {
+	return proxy
+}
+
 var _ = Logger(&Proxy{})
 
 func (p *Proxy) Write(b []byte) (int, error) {

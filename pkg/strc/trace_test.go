@@ -48,7 +48,7 @@ func TestLogTextHandler(t *testing.T) {
 	s.End()
 	check(`time=? level=DEBUG msg="span ? finished in ?" span.name=test span.id=IvQORsV span.parent=0000000 span.trace=bqzcRlJahlbbBZH span.dur=? span.source=?`)
 
-	s, ctx = Start(ctx, "level1")
+	s, _ = Start(ctx, "level1")
 	check(`time=? level=DEBUG msg="span level1 started" span.name=level1 span.id=kYcTpgn span.parent=IvQORsV span.trace=bqzcRlJahlbbBZH span.source=?`)
 
 	s.Event("one")
