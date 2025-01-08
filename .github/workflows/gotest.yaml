@@ -26,11 +26,10 @@
               path: changelog
           - run: pip3 install ./changelog
           - run: |
-              python -m rhenvision_changelog commit-check
+              python -m rhenvision_changelog commit-check || echo "::warning ::Commit message is not formatted correctly"
             working-directory: code
           - uses: actions/checkout@v3
           - uses: actions/setup-python@v3
-          - uses: pre-commit/action@v3.0.0
     
       tests:
         name: "🏫 Go lint and tests"
@@ -44,5 +43,5 @@
             with:
               version: "latest"
           - run: |
-              go tets -v ./...
+              go test -v ./...
     

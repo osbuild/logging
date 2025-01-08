@@ -136,7 +136,7 @@ func TestLogExporter(t *testing.T) {
 }
 
 func subProcess(ctx context.Context) {
-	span, ctx := Start(ctx, "subProcess")
+	span, _ := Start(ctx, "subProcess")
 	defer span.End()
 
 	span.Event("e")
