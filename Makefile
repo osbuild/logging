@@ -11,7 +11,7 @@ help:
 
 .PHONY: unit-tests
 unit-tests:  ## Run all tests
-	go test -v -covermode=atomic -coverprofile=coverage.txt ./...
+	go test -race -v -covermode=atomic -coverprofile=coverage.txt ./...
 
 .PHONY: lint
 lint:  ## run linter / static checker
