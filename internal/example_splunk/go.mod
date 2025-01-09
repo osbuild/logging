@@ -1,6 +1,8 @@
 module github.com/osbuild/logging/internal/example_splunk
 
-go 1.21
+go 1.22.1
+
+toolchain go1.23.4
 
 replace github.com/osbuild/logging => ../..
 
