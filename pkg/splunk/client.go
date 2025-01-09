@@ -19,13 +19,13 @@ import (
 )
 
 const (
-	// DefaultPayloadsChannelSize is the size of the channel that holds payloads, default 1k.
+	// DefaultPayloadsChannelSize is the size of the channel that holds payloads, default 4k.
 	DefaultPayloadsChannelSize = 4096
 
-	// DefaultEventSize is the initialized capacity of the event buffer, default 1kB
+	// DefaultEventSize is the initial capacity of the event buffer, default 1kB
 	DefaultEventSize = 1024
 
-	// DefaultMaximumSize is the initialized capacity of the event buffer before it is flushed, default is 1MB.
+	// DefaultMaximumSize is the initial capacity of the event buffer before it is flushed, default is 1MB.
 	DefaultMaximumSize = 1024 * 1024
 
 	// DefaultSendFrequency is the frequency at which payloads are sent at a maximum, default 5s.
@@ -43,7 +43,6 @@ type splunkLogger struct {
 	payloads chan []byte
 	active   atomic.Bool
 
-	// only modified by tests
 	payloadsChannelSize int
 	maximumSize         int
 	sendFrequency       time.Duration
@@ -72,7 +71,7 @@ type Stats struct {
 	LastRequestDuration time.Duration
 }
 
-func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *splunkLogger {
+func newSplunkLogger(ctx context.Context, url, token, source, hostname string, maximumSize int) *splunkLogger {
 	rcl := retryablehttp.NewClient()
 
 	sl := &splunkLogger{
@@ -91,6 +90,10 @@ func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *
 				return buf
 			},
 		},
+	}
+
+	if maximumSize != 0 {
+		sl.maximumSize = maximumSize
 	}
 
 	rcl.RetryWaitMin = 300 * time.Millisecond
@@ -119,7 +122,7 @@ func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *
 
 // Statistics returns a copy the current statistics of the logger. It is safe to call
 // this method concurrently with other goroutines.
-func (sl *splunkLogger) Statistics() Stats {
+func (sl *splunkLogger) statistics() Stats {
 	sl.statsMu.Lock()
 	defer sl.statsMu.Unlock()
 

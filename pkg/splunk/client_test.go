@@ -55,7 +55,7 @@ func TestSplunkLoggerRetry(t *testing.T) {
 		ch <- true
 	}))
 
-	sl := newSplunkLogger(context.Background(), srv.URL, "token", "source", "hostname")
+	sl := newSplunkLogger(context.Background(), srv.URL, "token", "source", "hostname", 0)
 	_, err := sl.event([]byte("{}\n"))
 	if err != nil {
 		t.Error(err)
@@ -98,7 +98,7 @@ func TestSplunkLoggerContext(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
-	sl := newSplunkLogger(ctx, srv.URL, "token", "source", "hostname")
+	sl := newSplunkLogger(ctx, srv.URL, "token", "source", "hostname", 0)
 	_, err := sl.event([]byte("{}\n"))
 	if err != nil {
 		t.Error(err)
@@ -120,7 +120,7 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 		{
 			name: "empty",
 			f: func() error {
-				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname")
+				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0)
 				defer sl.close()
 				_, err := sl.event([]byte("{}\n"))
 				if err != nil {
@@ -141,7 +141,7 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 		{
 			name: "json",
 			f: func() error {
-				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname")
+				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0)
 				defer sl.close()
 				_, err := sl.event([]byte(`{"a": "b"}` + "\n"))
 				if err != nil {

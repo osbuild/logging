@@ -173,13 +173,14 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		}
 
 		if config.SplunkConfig.Enabled {
-			handlerSplunk = splunk.NewSplunkHandler(ctx,
-				parseLevel(config.SplunkConfig.Level),
-				config.SplunkConfig.URL,
-				config.SplunkConfig.Token,
-				config.SplunkConfig.Source,
-				config.SplunkConfig.Hostname,
-			)
+			c := splunk.SplunkConfig{
+				Level:    parseLevel(config.SplunkConfig.Level),
+				URL:      config.SplunkConfig.URL,
+				Token:    config.SplunkConfig.Token,
+				Source:   config.SplunkConfig.Source,
+				Hostname: config.SplunkConfig.Hostname,
+			}
+			handlerSplunk = splunk.NewSplunkHandler(ctx, c)
 			handlers = append(handlers, handlerSplunk)
 		}
 
