@@ -107,16 +107,6 @@ go run github.com/osbuild/logging/internal/example_splunk/
 
 See [splunk](pkg/splunk) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/splunk) for more info.
 
-### journal - slog handler for systemd-journal
-
-See [example_journal](internal/example_journal/main.go) for a fully working example. To see it in action:
-
-```
-go run github.com/osbuild/logging/internal/example_journal/
-```
-
-See [journal](pkg/journal) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/journal) for more info.
-
 ### strc - simple tracing via slog
 
 See [example_print](internal/example_print/main.go) and [example_export](internal/example_export/main.go) for fully working examples. To see it in action:
@@ -268,6 +258,12 @@ To customize the `build_id` value added to all logs for non-git builds (e.g. in 
 go build -ldflags="-X 'github.com/osbuild/logging.BuildCustom=1234567'" github.com/osbuild/logging/internal/example_web/
 ```
 
+## Running tests:
+
+```
+make unit-tests
+```
+
 ## AUTHORS and LICENSE
 
 License: MIT
@@ -276,6 +272,4 @@ Most code in `splunk` package was ported from https://github.com/osbuild/osbuild
 
 ## TODO
 
-* Add more tests based on the stdlib `slogtest.TestHandler`
-* Update journal to use SendVals if [this patch](https://github.com/coreos/go-systemd/pull/454) gets accepted.
 * CLI tool for analyzing data from Splunk.

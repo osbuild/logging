@@ -12,13 +12,12 @@ import (
 	"sync"
 	"time"
 
+	journal "github.com/arianvp/slog-journal"
+	"github.com/getsentry/sentry-go"
 	"github.com/lzap/cloudwatchwriter2"
-	"github.com/osbuild/logging/pkg/journal"
 	"github.com/osbuild/logging/pkg/logrus"
 	"github.com/osbuild/logging/pkg/splunk"
 	"github.com/osbuild/logging/pkg/strc"
-
-	"github.com/getsentry/sentry-go"
 	slogsentry "github.com/samber/slog-sentry/v2"
 )
 
@@ -165,7 +164,11 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		}
 
 		if config.JournalConfig.Enabled {
-			h := journal.NewHandler(ctx, parseLevel(config.JournalConfig.Level))
+			h, err := journal.NewHandler(&journal.Options{Level: parseLevel(config.JournalConfig.Level)})
+			if err != nil {
+				outerError = fmt.Errorf("journal initialization error: %w", err)
+				return
+			}
 			handlers = append(handlers, h)
 		}
 

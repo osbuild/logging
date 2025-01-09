@@ -1,12 +1,15 @@
 module github.com/osbuild/logging/internal/example_sinit
 
-go 1.21
+go 1.22.1
+
+toolchain go1.23.4
 
 replace github.com/osbuild/logging => ../..
 
 require github.com/osbuild/logging v0.0.0-00010101000000-000000000000
 
 require (
+	github.com/arianvp/slog-journal v0.0.0-20250101175045-c1b76cacb61b // indirect
 	github.com/aws/aws-sdk-go-v2 v1.32.7 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.48 // indirect
@@ -14,7 +17,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.26 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.45.1 // indirect
 	github.com/aws/smithy-go v1.22.1 // indirect
-	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/getsentry/sentry-go v0.31.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
