@@ -38,7 +38,23 @@ func replaceAttr(groups []string, a slog.Attr) slog.Attr {
 func NewSplunkHandler(ctx context.Context, level slog.Level, url, token, source, hostname string) *SplunkHandler {
 	h := &SplunkHandler{
 		level:  level,
-		splunk: newSplunkLogger(ctx, url, token, source, hostname),
+		splunk: newSplunkLogger(ctx, url, token, source, hostname, DefaultPayloadsChannelSize, DefaultMaximumSize, DefaultSendFrequency),
+	}
+
+	h.jh = slog.NewJSONHandler(h, &slog.HandlerOptions{Level: level, AddSource: true, ReplaceAttr: replaceAttr})
+	return h
+}
+
+func newSplunkHandlerWithParams(
+	ctx context.Context,
+	level slog.Level,
+	url, token, source, hostname string,
+	maximumSize int,
+	payloadsChannelSize int,
+	sendFrequency time.Duration) *SplunkHandler {
+	h := &SplunkHandler{
+		level:  level,
+		splunk: newSplunkLogger(ctx, url, token, source, hostname, payloadsChannelSize, maximumSize, sendFrequency),
 	}
 
 	h.jh = slog.NewJSONHandler(h, &slog.HandlerOptions{Level: level, AddSource: true, ReplaceAttr: replaceAttr})

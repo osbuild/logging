@@ -90,9 +90,7 @@ func TestSplunkHandler(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", tt.name), func(t *testing.T) {
 			emptyLines = 0
 
-			h := NewSplunkHandler(context.Background(), slog.LevelDebug, srv.URL, "", "s", "h")
-			h.splunk.payloadsChannelSize = tt.maxChanSize
-			h.splunk.maximumSize = tt.maxBufSize
+			h := newSplunkHandlerWithParams(context.Background(), slog.LevelDebug, srv.URL, "", "s", "h", tt.maxChanSize, tt.maxBufSize, DefaultSendFrequency)
 			logger := slog.New(h)
 			tt.f(logger)
 			h.Close()
@@ -131,8 +129,7 @@ func TestSplunkHandlerBatching(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	h := NewSplunkHandler(context.Background(), slog.LevelDebug, srv.URL, "", "s", "h")
-	h.splunk.maximumSize = 1000
+	h := newSplunkHandlerWithParams(context.Background(), slog.LevelDebug, srv.URL, "", "s", "h", DefaultPayloadsChannelSize, 1000, DefaultSendFrequency)
 	logger := slog.New(h).WithGroup("g").With("kg1", "kv1")
 
 	for i := 0; i < 4000; i++ {

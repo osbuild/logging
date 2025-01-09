@@ -72,7 +72,7 @@ type Stats struct {
 	LastRequestDuration time.Duration
 }
 
-func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *splunkLogger {
+func newSplunkLogger(ctx context.Context, url, token, source, hostname string, payloadsChannelSize int, maximumSize int, sendFrequency time.Duration) *splunkLogger {
 	rcl := retryablehttp.NewClient()
 
 	sl := &splunkLogger{
@@ -81,9 +81,9 @@ func newSplunkLogger(ctx context.Context, url, token, source, hostname string) *
 		token:               token,
 		source:              source,
 		hostname:            hostname,
-		payloadsChannelSize: DefaultPayloadsChannelSize,
-		maximumSize:         DefaultMaximumSize,
-		sendFrequency:       DefaultSendFrequency,
+		payloadsChannelSize: payloadsChannelSize,
+		maximumSize:         maximumSize,
+		sendFrequency:       sendFrequency,
 		pool: sync.Pool{
 			New: func() any {
 				buf := &bytes.Buffer{}
