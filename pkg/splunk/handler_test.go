@@ -33,6 +33,9 @@ func TestSplunkHandler(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	// largeString to fill up DefaultEventSize
+	largeString := strings.Repeat("X", DefaultEventSize)
+
 	tests := []struct {
 		name        string
 		f           func(*slog.Logger)
@@ -78,6 +81,20 @@ func TestSplunkHandler(t *testing.T) {
 			f: func(l *slog.Logger) {
 				for i := 0; i < 10; i++ {
 					l.Debug("m", "i", i)
+					//FIXME There shouldn't be a sleep necessary to flush for a new batch?
+					time.Sleep(DefaultSendFrequency + time.Millisecond*10)
+				}
+			},
+			maxChanSize: DefaultPayloadsChannelSize,
+			maxBufSize:  1,
+			events:      10,
+			batches:     10,
+		},
+		{
+			name: "10 large batches",
+			f: func(l *slog.Logger) {
+				for i := 0; i < 10; i++ {
+					l.Debug(largeString, "i", i)
 					//FIXME There shouldn't be a sleep necessary to flush for a new batch?
 					time.Sleep(DefaultSendFrequency + time.Millisecond*10)
 				}
