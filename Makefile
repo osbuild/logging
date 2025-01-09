@@ -11,7 +11,7 @@ help:
 
 .PHONY: unit-tests
 unit-tests:  ## Run all tests
-	go test -v -covermode=atomic -coverprofile=coverage.txt ./...
+	go test -race -v -covermode=atomic -coverprofile=coverage.txt ./...
 
 .PHONY: lint
 lint:  ## run linter / static checker
@@ -20,4 +20,3 @@ lint:  ## run linter / static checker
 .PHONY: coverage-report
 coverage-report: unit-tests  ## Run unit tests and generate an HTML coverage report
 	go tool cover -o coverage.html -html coverage.txt
-

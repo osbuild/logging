@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/slogtest"
 )
 
 func TestSplunkHandler(t *testing.T) {
@@ -24,7 +26,6 @@ func TestSplunkHandler(t *testing.T) {
 				emptyLines++
 				continue
 			}
-			//t.Log(line)
 			if !json.Valid([]byte(line)) {
 				t.Fatalf("invalid json: %s", line)
 			}
@@ -33,32 +34,29 @@ func TestSplunkHandler(t *testing.T) {
 	defer srv.Close()
 
 	tests := []struct {
-		name        string
-		f           func(*slog.Logger)
-		maxChanSize int
-		maxBufSize  int
-		events      int
-		batches     int
+		name       string
+		f          func(*slog.Logger)
+		maxBufSize int
+		events     int
+		batches    int
 	}{
 		{
 			name: "1 batch 1 event",
 			f: func(l *slog.Logger) {
 				l.Debug("message", "k1", "v1")
 			},
-			maxChanSize: DefaultPayloadsChannelSize,
-			maxBufSize:  DefaultMaximumSize,
-			events:      1,
-			batches:     1,
+			maxBufSize: DefaultMaximumSize,
+			events:     1,
+			batches:    1,
 		},
 		{
 			name: "1 quoted batch 1 event",
 			f: func(l *slog.Logger) {
 				l.Debug(`msg: "'@#$~^&*}{ęLukáš`, "k1", "v1")
 			},
-			maxChanSize: DefaultPayloadsChannelSize,
-			maxBufSize:  DefaultMaximumSize,
-			events:      1,
-			batches:     1,
+			maxBufSize: DefaultMaximumSize,
+			events:     1,
+			batches:    1,
 		},
 		{
 			name: "1 batch 3 events",
@@ -67,10 +65,9 @@ func TestSplunkHandler(t *testing.T) {
 				l.Debug("m2")
 				l.Debug("m3")
 			},
-			maxChanSize: DefaultPayloadsChannelSize,
-			maxBufSize:  DefaultMaximumSize,
-			events:      3,
-			batches:     1,
+			maxBufSize: DefaultMaximumSize,
+			events:     3,
+			batches:    1,
 		},
 		{
 			name: "10 batches",
@@ -79,10 +76,9 @@ func TestSplunkHandler(t *testing.T) {
 					l.Debug("m", "i", i)
 				}
 			},
-			maxChanSize: DefaultPayloadsChannelSize,
-			maxBufSize:  1,
-			events:      10,
-			batches:     10,
+			maxBufSize: 1,
+			events:     10,
+			batches:    10,
 		},
 	}
 
@@ -90,9 +86,14 @@ func TestSplunkHandler(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", tt.name), func(t *testing.T) {
 			emptyLines = 0
 
-			h := NewSplunkHandler(context.Background(), slog.LevelDebug, srv.URL, "", "s", "h")
-			h.splunk.payloadsChannelSize = tt.maxChanSize
-			h.splunk.maximumSize = tt.maxBufSize
+			c := SplunkConfig{
+				Level:              slog.LevelDebug,
+				URL:                srv.URL,
+				Source:             "s",
+				Hostname:           "h",
+				DefaultMaximumSize: tt.maxBufSize,
+			}
+			h := NewSplunkHandler(context.Background(), c)
 			logger := slog.New(h)
 			tt.f(logger)
 			h.Close()
@@ -131,8 +132,14 @@ func TestSplunkHandlerBatching(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	h := NewSplunkHandler(context.Background(), slog.LevelDebug, srv.URL, "", "s", "h")
-	h.splunk.maximumSize = 1000
+	c := SplunkConfig{
+		Level:              slog.LevelDebug,
+		URL:                srv.URL,
+		Source:             "s",
+		Hostname:           "h",
+		DefaultMaximumSize: 1000,
+	}
+	h := NewSplunkHandler(context.Background(), c)
 	logger := slog.New(h).WithGroup("g").With("kg1", "kv1")
 
 	for i := 0; i < 4000; i++ {
@@ -150,4 +157,40 @@ func TestSplunkHandlerBatching(t *testing.T) {
 	if stats.BatchCount == 0 || stats.BatchCount == stats.EventCount {
 		t.Fatalf("expected 1000 batches, got %d", stats.BatchCount)
 	}
+}
+
+func TestSlogtest(t *testing.T) {
+	messages := make(chan []byte)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read error: %v", err)
+		}
+		messages <- buf
+	}))
+	defer srv.Close()
+	defer close(messages)
+
+	c := SplunkConfig{
+		Level:              slog.LevelDebug,
+		URL:                srv.URL,
+		Source:             "s",
+		Hostname:           "h",
+		DefaultMaximumSize: 1, // force batching
+	}
+
+	slogtest.Run(t, func(t *testing.T) slog.Handler {
+		return NewSplunkHandler(context.Background(), c)
+	}, func(t *testing.T) map[string]any {
+		m := make(map[string]any)
+
+		buf := <-messages
+		err := json.Unmarshal(buf, &m)
+		if err != nil {
+			t.Fatalf("invalid json: %v\n%s", err, string(buf))
+		}
+
+		// unwrap the event
+		return m["event"].(map[string]any)["message"].(map[string]any)
+	})
 }

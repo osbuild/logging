@@ -24,9 +24,16 @@ func main() {
 	if !ok {
 		url = srv.URL
 	}
-	token, ok := os.LookupEnv("SPLUNK_TOKEN")
+	token := os.Getenv("SPLUNK_TOKEN")
 
-	h := splunk.NewSplunkHandler(context.Background(), slog.LevelDebug, url, token, "source", "hostname")
+	c := splunk.SplunkConfig{
+		Level:    slog.LevelDebug,
+		URL:      url,
+		Token:    token,
+		Source:   "source",
+		Hostname: "hostname",
+	}
+	h := splunk.NewSplunkHandler(context.Background(), c)
 
 	log := slog.New(h)
 	log.Debug("message", "k1", "v1")

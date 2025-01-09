@@ -32,16 +32,37 @@ func replaceAttr(groups []string, a slog.Attr) slog.Attr {
 	return a
 }
 
+// SplunkConfig is the configuration for the Splunk handler.
+type SplunkConfig struct {
+	// Level is the minimum level of logs that will be sent to Splunk.
+	Level slog.Level
+
+	// URL is the Splunk HEC endpoint.
+	URL string
+
+	// Token is the Splunk HEC token.
+	Token string
+
+	// Source is the source of the logs.
+	Source string
+
+	// Hostname is the hostname of the logs.
+	Hostname string
+
+	// DefaultMaximumSize is the initialized capacity of the event buffer before it is flushed, default is 1MB.
+	DefaultMaximumSize int
+}
+
 // NewSplunkHandler creates a new SplunkHandler. It uses highly-optimized JSON handler from
 // the standard library to format the log records. The handler implements io.Writer interface
 // which is then used to stream JSON data into the Splunk client.
-func NewSplunkHandler(ctx context.Context, level slog.Level, url, token, source, hostname string) *SplunkHandler {
+func NewSplunkHandler(ctx context.Context, config SplunkConfig) *SplunkHandler {
 	h := &SplunkHandler{
-		level:  level,
-		splunk: newSplunkLogger(ctx, url, token, source, hostname),
+		level:  config.Level,
+		splunk: newSplunkLogger(ctx, config.URL, config.Token, config.Source, config.Hostname, config.DefaultMaximumSize),
 	}
 
-	h.jh = slog.NewJSONHandler(h, &slog.HandlerOptions{Level: level, AddSource: true, ReplaceAttr: replaceAttr})
+	h.jh = slog.NewJSONHandler(h, &slog.HandlerOptions{Level: config.Level, AddSource: true, ReplaceAttr: replaceAttr})
 	return h
 }
 
@@ -100,5 +121,5 @@ func (h *SplunkHandler) WithGroup(name string) slog.Handler {
 
 // Statistics returns the statistics of the Splunk client.
 func (h *SplunkHandler) Statistics() Stats {
-	return h.splunk.Statistics()
+	return h.splunk.statistics()
 }
