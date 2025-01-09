@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSplunkHandler(t *testing.T) {
@@ -77,6 +78,8 @@ func TestSplunkHandler(t *testing.T) {
 			f: func(l *slog.Logger) {
 				for i := 0; i < 10; i++ {
 					l.Debug("m", "i", i)
+					//FIXME There shouldn't be a sleep necessary to flush for a new batch?
+					time.Sleep(DefaultSendFrequency + time.Millisecond*10)
 				}
 			},
 			maxChanSize: DefaultPayloadsChannelSize,
