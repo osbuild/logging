@@ -105,7 +105,7 @@ See [example_splunk](internal/example_splunk/main.go) for a fully working exampl
 go run github.com/osbuild/logging/internal/example_splunk/
 ```
 
-See [splunk](pkg/splunk) package for more info.
+See [splunk](pkg/splunk) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/splunk) for more info.
 
 ### journal - slog handler for systemd-journal
 
@@ -115,7 +115,7 @@ See [example_journal](internal/example_journal/main.go) for a fully working exam
 go run github.com/osbuild/logging/internal/example_journal/
 ```
 
-See [journal](pkg/journal) package for more info.
+See [journal](pkg/journal) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/journal) for more info.
 
 ### strc - simple tracing via slog
 
@@ -125,7 +125,7 @@ See [example_print](internal/example_print/main.go) and [example_export](interna
 go run github.com/osbuild/logging/internal/example_print/
 ```
 
-See [strc](pkg/strc) package for more info.
+See [strc](pkg/strc) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/strc) for more info.
 
 ### logrus - proxy to slog
 
@@ -135,17 +135,17 @@ See [example_logrus](internal/example_logrus/main.go) for a fully working exampl
 go run github.com/osbuild/logging/internal/example_logrus/
 ```
 
-See [logrus](pkg/logrus) package for more info.
+See [logrus](pkg/logrus) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/logrus) for more info.
 
 ### echo - proxy to slog
 
 See [example_web](internal/example_web/main.go) for a fully working example.
 
-See [echo](pkg/echo) package for more info.
+See [echo](pkg/echo) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/echo) for more info.
 
 ### collect - special handler only used for testing
 
-See [collect](pkg/collect) package for more info.
+See [collect](pkg/collect) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/collect) for more info.
 
 ## Full example
 
@@ -272,7 +272,7 @@ go build -ldflags="-X 'github.com/osbuild/logging.BuildCustom=1234567'" github.c
 
 License: MIT
 
-Some code in `splunk` was borrowed from https://github.com/osbuild/osbuild-composer and some code in `strc` is from https://github.com/samber/slog-http
+Most code in `splunk` package was ported from https://github.com/osbuild/osbuild-composer and some code in `strc` from https://github.com/samber/slog-http
 
 ## TODO
 
