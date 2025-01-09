@@ -8,7 +8,7 @@ import (
 )
 
 func subProcess(ctx context.Context) {
-	span, ctx := strc.Start(ctx, "subProcess")
+	span, _ := strc.Start(ctx, "subProcess")
 	defer span.End()
 
 	span.Event("an event")

@@ -255,7 +255,10 @@ go run github.com/osbuild/logging/internal/example_web/
 To customize the `build_id` value added to all logs for non-git builds (e.g. in an RPM build), do:
 
 ```
-go build -ldflags="-X 'github.com/osbuild/logging.BuildCustom=1234567'" github.com/osbuild/logging/internal/example_web/
+go build \
+	-ldflags="-X 'github.com/osbuild/logging.buildCommit=1234567'" \
+	-ldflags="-X 'github.com/osbuild/logging.buildTime=$(date -u)'" \
+	github.com/osbuild/logging/internal/example_web/
 ```
 
 ## Running tests:
