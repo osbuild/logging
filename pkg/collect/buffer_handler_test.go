@@ -1,15 +1,17 @@
-package collect
+package collect_test
 
 import (
 	"encoding/json"
 	"log/slog"
 	"testing"
 	"testing/slogtest"
+
+	"github.com/osbuild/logging/pkg/collect"
 )
 
 func TestStandardLibraryHelper(t *testing.T) {
 	var result []map[string]any
-	th := NewTestHandler(slog.LevelDebug, true, true, true)
+	th := collect.NewTestHandler(slog.LevelDebug, true, true, true)
 	err := slogtest.TestHandler(th, func() []map[string]any {
 		result = th.All()
 		return parseLogEntries(t, result)
