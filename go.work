@@ -10,4 +10,5 @@ use (
 	./internal/example_sinit
 	./internal/example_splunk
 	./internal/example_web
+	./internal/example_cli
 )
