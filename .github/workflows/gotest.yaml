@@ -43,5 +43,5 @@
             with:
               version: "latest"
           - run: |
-              make unit-tests
+              make unit-tests run-examples
     
