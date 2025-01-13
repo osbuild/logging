@@ -32,7 +32,7 @@ var (
 
 type MiddlewareConfig struct {
 	// DefaultLevel is the default log level for requests. Defaults to Info.
-	DefaultLevel     slog.Level
+	DefaultLevel slog.Level
 
 	// ClientErrorLevel is the log level for requests with client errors (4xx). Defaults to Warn.
 	ClientErrorLevel slog.Level
@@ -41,28 +41,28 @@ type MiddlewareConfig struct {
 	ServerErrorLevel slog.Level
 
 	// SpanName is the name of the span. Defaults to "http request".
-	SpanName           string
+	SpanName string
 
 	// WithUserAgent enables logging of the User-Agent header. Defaults to false.
-	WithUserAgent      bool
+	WithUserAgent bool
 
 	// WithRequestBody enables logging of the request body. Defaults to false.
-	WithRequestBody    bool
+	WithRequestBody bool
 
 	// WithRequestHeader enables logging of the request headers. Defaults to false.
-	WithRequestHeader  bool
+	WithRequestHeader bool
 
 	// WithResponseBody enables logging of the response body. Defaults to false.
-	WithResponseBody   bool
+	WithResponseBody bool
 
 	// WithResponseHeader enables logging of the response headers. Defaults to false.
 	WithResponseHeader bool
 
 	// WithSpanID enables logging of the span ID. Defaults to false.
-	WithTraceID        bool
+	WithTraceID bool
 
 	// WithSpanID enables logging of the span ID. Defaults to false.
-	WithSpanID         bool
+	WithSpanID bool
 
 	// Filters is a list of filters to apply before logging. Optional.
 	Filters []Filter
@@ -125,8 +125,10 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 			// trace id
 			ctx := r.Context()
 			traceID := TraceIDFromRequest(r)
+			var returnTraceID bool
 			if traceID == EmptyTraceID {
 				traceID = NewTraceID()
+				returnTraceID = true
 			}
 			ctx = WithTraceID(ctx, traceID)
 
@@ -140,6 +142,12 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 				end := time.Now()
 				latency := end.Sub(start)
 
+				// add trace id to response header
+				if returnTraceID {
+					w.Header().Add(TraceHTTPHeaderName, traceID.String())
+				}
+
+				// build attributes
 				baseAttributes := []slog.Attr{}
 
 				if config.WithTraceID {

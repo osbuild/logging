@@ -17,8 +17,8 @@ const (
 	traceLength = 15 // ojtlqPCGXEWytHg
 	spanLength  = 7  // aCBzdka.NjPdyjv
 
-	traceHTTPHeader = "X-Strc-Trace-ID"
-	spanHTTPHeader  = "X-Strc-Span-ID"
+	TraceHTTPHeaderName = "X-Strc-Trace-ID"
+	SpanHTTPHeaderName  = "X-Strc-Span-ID"
 
 	EmptyTraceID TraceID = TraceID("000000000000000")
 	EmptySpanID  SpanID  = SpanID("0000000.0000000")
@@ -85,7 +85,7 @@ func WithTraceID(ctx context.Context, traceID TraceID) context.Context {
 
 // TraceIDFromRequest returns trace ID from a request. If trace ID is not found, it returns EmptyTraceID.
 func TraceIDFromRequest(req *http.Request) TraceID {
-	t := req.Header.Get(traceHTTPHeader)
+	t := req.Header.Get(TraceHTTPHeaderName)
 	if t == "" {
 		return EmptyTraceID
 	}
@@ -96,8 +96,8 @@ func TraceIDFromRequest(req *http.Request) TraceID {
 // if the request already has a trace ID header, it does nothing.
 func AddTraceIDHeader(ctx context.Context, req *http.Request) {
 	traceID := TraceIDFromContext(ctx)
-	if traceID != "" && req.Header.Get(traceHTTPHeader) == "" {
-		req.Header.Add(traceHTTPHeader, traceID.String())
+	if traceID != "" && req.Header.Get(TraceHTTPHeaderName) == "" {
+		req.Header.Add(TraceHTTPHeaderName, traceID.String())
 	}
 }
 
@@ -122,7 +122,7 @@ func WithSpanID(ctx context.Context, spanID SpanID) context.Context {
 
 // SpanIDFromRequest returns span ID from a request. If span ID is not found, it returns EmptySpanID.
 func SpanIDFromRequest(req *http.Request) SpanID {
-	s := req.Header.Get(spanHTTPHeader)
+	s := req.Header.Get(SpanHTTPHeaderName)
 	if s == "" {
 		return EmptySpanID
 	}
@@ -133,8 +133,8 @@ func SpanIDFromRequest(req *http.Request) SpanID {
 // if the request already has a span ID header, it does nothing.
 func AddSpanIDHeader(ctx context.Context, req *http.Request) {
 	spanID := SpanIDFromContext(ctx)
-	if spanID != "" && req.Header.Get(spanHTTPHeader) == "" {
-		req.Header.Add(spanHTTPHeader, spanID.String())
+	if spanID != "" && req.Header.Get(SpanHTTPHeaderName) == "" {
+		req.Header.Add(SpanHTTPHeaderName, spanID.String())
 	}
 }
 

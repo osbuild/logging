@@ -1,6 +1,7 @@
 package strc_test
 
 import (
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -210,5 +211,56 @@ func TestMiddlewarePairs(t *testing.T) {
 		return e["msg"] == "Test log" && e["request_id"] == "VIPEcES"
 	}) {
 		t.Error("Log message not found")
+	}
+}
+
+func TestMiddlewareAddsToContext(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+	middleware := strc.NewMiddleware(logger)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tid := strc.TraceIDFromContext(r.Context())
+		sid := strc.SpanIDFromContext(r.Context())
+
+		if tid == "" || tid == strc.EmptyTraceID {
+			t.Errorf("expected trace id to be set")
+		}
+
+		if sid != strc.EmptySpanID {
+			t.Errorf("expected span id to be empty")
+		}
+	})
+
+	middleware(handler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
+}
+
+func TestMiddlewareAddsTraceCtxAndHeaders(t *testing.T) {
+	var tid strc.TraceID
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+	middleware := strc.NewMiddleware(logger)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tid = strc.TraceIDFromContext(r.Context())
+	})
+
+	rec := httptest.NewRecorder()
+	middleware(handler).ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
+	if rec.Header().Get(strc.TraceHTTPHeaderName) != tid.String() {
+		t.Errorf("expected trace header to be set to %s", tid.String())
+	}
+}
+
+func TestMiddlewareSkipsTraceHeader(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+	middleware := strc.NewMiddleware(logger)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// noop
+	})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Add(strc.TraceHTTPHeaderName, strc.NewTraceID().String())
+	middleware(handler).ServeHTTP(rec, req)
+	if rec.Header().Get(strc.TraceHTTPHeaderName) != "" {
+		t.Errorf("expected trace header to be empty")
 	}
 }
