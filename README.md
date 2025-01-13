@@ -109,6 +109,20 @@ See [splunk](pkg/splunk) source or [package documentation](https://pkg.go.dev/gi
 
 ### strc - simple tracing via slog
 
+A small utility that accepts JSON from Splunk/Kibana/Cloudwatch and generates a text stack with timing information or a SVG flame graph. See [example_cli](internal/example_cli/main.go) and [example_export](internal/example_export/main.go) for fully working examples. To see it in action:
+
+```
+go run github.com/osbuild/logging/internal/example_cli/
+```
+
+See [strc](pkg/strc/stgraph) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/strc/stgraph) for more info.
+
+The generated SVG file is interactive and one can drill down the stack with a mouse click, the file needs to be opened in a new browser panel tho:
+
+[![Example](pkg/strc/stgraph/graph.svg)](pkg/strc/stgraph/graph.svg)
+
+### strc/stgraph - simple tracing data processor
+
 See [example_print](internal/example_print/main.go) and [example_export](internal/example_export/main.go) for fully working examples. To see it in action:
 
 ```
@@ -272,7 +286,3 @@ make unit-tests
 License: MIT
 
 Most code in `splunk` package was ported from https://github.com/osbuild/osbuild-composer and some code in `strc` from https://github.com/samber/slog-http
-
-## TODO
-
-* CLI tool for analyzing data from Splunk.

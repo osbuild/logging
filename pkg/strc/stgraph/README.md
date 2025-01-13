@@ -38,7 +38,7 @@ Then install flamegraph utility (package for Fedora available) and run:
 flamegraph.pl /tmp/graph.unfolded > graph.svg
 ```
 
-Result (click to zoom):
+The generated SVG file is interactive and one can drill down the stack with a mouse click, the file needs to be opened in a new browser panel tho:
 
 [![Example](graph.svg)](graph.svg)
 
