@@ -20,3 +20,7 @@ lint:  ## run linter / static checker
 .PHONY: coverage-report
 coverage-report: unit-tests  ## Run unit tests and generate an HTML coverage report
 	go tool cover -o coverage.html -html coverage.txt
+
+.PHONY: run-examples
+run-examples:  ## Run examples tests
+	for d in internal/example_*; do go run github.com/osbuild/logging/$$d || exit 1; done

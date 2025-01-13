@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	journal "github.com/arianvp/slog-journal"
 	"github.com/getsentry/sentry-go"
 	"github.com/lzap/cloudwatchwriter2"
 	"github.com/osbuild/logging/pkg/logrus"
 	"github.com/osbuild/logging/pkg/splunk"
 	"github.com/osbuild/logging/pkg/strc"
 	slogsentry "github.com/samber/slog-sentry/v2"
+	journal "github.com/systemd/slog-journal"
 )
 
 // LoggingConfig is the configuration for the logging system.
@@ -164,7 +164,16 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		}
 
 		if config.JournalConfig.Enabled {
-			h, err := journal.NewHandler(&journal.Options{Level: parseLevel(config.JournalConfig.Level)})
+			h, err := journal.NewHandler(&journal.Options{
+				Level: parseLevel(config.JournalConfig.Level),
+				ReplaceGroup: func(k string) string {
+					return strings.ReplaceAll(strings.ToUpper(k), "-", "_")
+				},
+				ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+					a.Key = strings.ReplaceAll(strings.ToUpper(a.Key), "-", "_")
+					return a
+				},
+			})
 			if err != nil {
 				outerError = fmt.Errorf("journal initialization error: %w", err)
 				return
@@ -245,8 +254,14 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 
 // Flush flushes all pending logs to the configured outputs. Blocks until all logs are written.
 func Flush() {
-	handlerSplunk.Close()
-	handlerCloudWatch.Close()
+	if handlerSplunk != nil {
+		handlerSplunk.Close()
+	}
+
+	if handlerCloudWatch != nil {
+		handlerCloudWatch.Close()
+	}
+
 	sentry.Flush(2 * time.Second)
 }
 

@@ -22,7 +22,7 @@ func main() {
 			Level:   "debug",
 		},
 		SplunkConfig: sinit.SplunkConfig{
-			Enabled:  true,
+			Enabled:  os.Getenv("SPLUNK_URL") != "",
 			Level:    "debug",
 			URL:      os.Getenv("SPLUNK_URL"),
 			Token:    os.Getenv("SPLUNK_TOKEN"),
@@ -30,7 +30,7 @@ func main() {
 			Hostname: "test-hostname",
 		},
 		CloudWatchConfig: sinit.CloudWatchConfig{
-			Enabled:      true,
+			Enabled:      os.Getenv("AWS_REGION") != "",
 			Level:        "debug",
 			AWSRegion:    os.Getenv("AWS_REGION"),
 			AWSSecret:    os.Getenv("AWS_SECRET"),

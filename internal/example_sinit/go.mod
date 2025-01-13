@@ -9,7 +9,6 @@ replace github.com/osbuild/logging => ../..
 require github.com/osbuild/logging v0.0.0-00010101000000-000000000000
 
 require (
-	github.com/arianvp/slog-journal v0.0.0-20250101175045-c1b76cacb61b // indirect
 	github.com/aws/aws-sdk-go-v2 v1.32.7 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.48 // indirect
@@ -27,7 +26,8 @@ require (
 	github.com/samber/slog-common v0.18.0 // indirect
 	github.com/samber/slog-sentry/v2 v2.9.2 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	github.com/systemd/slog-journal v0.1.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
