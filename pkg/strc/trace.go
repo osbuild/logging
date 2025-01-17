@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,14 +26,22 @@ var ParentIDName string = "parent"
 // SkipSource is a flag that disables source logging.
 var SkipSource bool
 
-var destination = slog.New(&NoopHandler{})
+var destination atomic.Pointer[slog.Logger]
+
+func init() {
+	destination.Store(slog.New(&NoopHandler{}))
+}
 
 func SetLogger(lg *slog.Logger) {
-	destination = lg.WithGroup(SpanGroupName)
+	destination.Store(lg.WithGroup(SpanGroupName))
+}
+
+func SetNoopLogger() {
+	destination.Store(slog.New(&NoopHandler{}))
 }
 
 func logger() *slog.Logger {
-	return destination
+	return destination.Load()
 }
 
 type Span struct {

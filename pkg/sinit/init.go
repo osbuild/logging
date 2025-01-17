@@ -129,7 +129,7 @@ type TracingConfig struct {
 
 	// ContextCallback is an optional callback function that is called for each log entry
 	// to add additional attributes to the log entry.
-	ContextCallback func(ctx context.Context, a []slog.Attr) error
+	ContextCallback strc.MultiCallback
 }
 
 var initOnce sync.Once

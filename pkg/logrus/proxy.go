@@ -3,22 +3,10 @@ package logrus
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
-)
-
-type Fields map[string]any
-
-type Level uint32
-
-const (
-	PanicLevel Level = iota
-	FatalLevel
-	ErrorLevel
-	WarnLevel
-	InfoLevel
-	DebugLevel
-	TraceLevel
+	"sync/atomic"
 )
 
 // Proxy is a proxy type for logrus.Logger
@@ -27,12 +15,17 @@ type Proxy struct {
 	ctx  context.Context
 }
 
-var proxy *Proxy
+var proxy atomic.Pointer[Proxy]
+
+func init() {
+	proxy.Store(NewDiscardProxy())
+}
 
 // NewProxyFor creates a new Proxy for a particular logger
 func NewProxyFor(logger *slog.Logger) *Proxy {
 	return &Proxy{
 		dest: logger.With(slog.Bool("logrus", true)),
+		ctx:  context.Background(),
 	}
 }
 
@@ -41,12 +34,33 @@ func NewProxy() *Proxy {
 	return NewProxyFor(slog.Default())
 }
 
+// NewDiscardProxy creates a new Proxy which discards all logs. This is the default logger when not set.
+func NewDiscardProxy() *Proxy {
+	return NewProxyFor(slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError})))
+}
+
+// NewEntry creates a new Proxy for the standard logger. Proxy must be passed as an argument.
+func NewEntry(fl FieldLogger) *Proxy {
+	return fl.(*Proxy)
+}
+
+// StandardLogger returns a standard logger proxy.
+func StandardLogger() *Proxy {
+	return NewProxy()
+}
+
+var (
+	_ Logger      = &Proxy{}
+	_ StdLogger   = &Proxy{}
+	_ FieldLogger = &Proxy{}
+)
+
 func Default() *Proxy {
-	return proxy
+	return proxy.Load()
 }
 
 func SetDefault(p *Proxy) {
-	proxy = p
+	proxy.Store(p)
 }
 
 func (p *Proxy) GetLevel() Level {
@@ -56,9 +70,10 @@ func (p *Proxy) GetLevel() Level {
 func (p *Proxy) SetLevel(level Level) {}
 
 func (p *Proxy) WithContext(ctx context.Context) *Proxy {
-	p.ctx = ctx
-
-	return p
+	return &Proxy{
+		dest: p.dest,
+		ctx:  ctx,
+	}
 }
 
 func (p *Proxy) WithField(key string, value any) *Proxy {
@@ -79,6 +94,13 @@ func (p *Proxy) WithFields(fields Fields) *Proxy {
 	}
 }
 
+func (p *Proxy) WithError(err error) *Proxy {
+	return &Proxy{
+		dest: p.dest.With(slog.String("err", err.Error())),
+		ctx:  p.ctx,
+	}
+}
+
 func anyToString(a []any) []string {
 	s := make([]string, 0, len(a))
 	for _, v := range a {
@@ -87,40 +109,32 @@ func anyToString(a []any) []string {
 	return s
 }
 
+func (p *Proxy) Print(args ...any) {
+	p.Info(args...)
+}
+
 func (p *Proxy) Trace(args ...any) {
 	p.Debug(args...)
 }
 
 func (p *Proxy) Debug(args ...any) {
-	if p.ctx != nil {
-		p.dest.Debug(strings.Join(anyToString(args), " "))
-	} else {
-		p.dest.DebugContext(p.ctx, strings.Join(anyToString(args), " "))
-	}
+	p.dest.DebugContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Info(args ...any) {
-	if p.ctx != nil {
-		p.dest.Info(strings.Join(anyToString(args), " "))
-	} else {
-		p.dest.InfoContext(p.ctx, strings.Join(anyToString(args), " "))
-	}
+	p.dest.InfoContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Warn(args ...any) {
-	if p.ctx != nil {
-		p.dest.Warn(strings.Join(anyToString(args), " "))
-	} else {
-		p.dest.WarnContext(p.ctx, strings.Join(anyToString(args), " "))
-	}
+	p.dest.WarnContext(p.ctx, strings.Join(anyToString(args), " "))
+}
+
+func (p *Proxy) Warning(args ...any) {
+	p.dest.WarnContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Error(args ...any) {
-	if p.ctx != nil {
-		p.dest.Error(strings.Join(anyToString(args), " "))
-	} else {
-		p.dest.ErrorContext(p.ctx, strings.Join(anyToString(args), " "))
-	}
+	p.dest.ErrorContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Fatal(args ...any) {
@@ -133,6 +147,10 @@ func (p *Proxy) Panic(args ...any) {
 
 func (p *Proxy) Tracef(format string, args ...any) {
 	p.Debug(fmt.Sprintf(format, args...))
+}
+
+func (p *Proxy) Printf(format string, args ...any) {
+	p.Info(fmt.Sprintf(format, args...))
 }
 
 func (p *Proxy) Debugf(format string, args ...any) {
@@ -161,6 +179,10 @@ func (p *Proxy) Fatalf(format string, args ...any) {
 
 func (p *Proxy) Panicf(format string, args ...any) {
 	p.Panic(fmt.Sprintf(format, args...))
+}
+
+func (p *Proxy) Println(args ...any) {
+	p.Info(args...)
 }
 
 func (p *Proxy) Traceln(args ...any) {
@@ -196,113 +218,133 @@ func (p *Proxy) Panicln(args ...any) {
 }
 
 func GetLevel() Level {
-	return proxy.GetLevel()
+	return proxy.Load().GetLevel()
 }
 
 func SetLevel(level Level) {
-	proxy.SetLevel(level)
+	proxy.Load().SetLevel(level)
+}
+
+func Print(args ...any) {
+	proxy.Load().Print(args...)
 }
 
 func Trace(args ...any) {
-	proxy.Trace(args...)
+	proxy.Load().Trace(args...)
 }
 
 func Debug(args ...any) {
-	proxy.Debug(args...)
+	proxy.Load().Debug(args...)
 }
 
 func Info(args ...any) {
-	proxy.Info(args...)
+	proxy.Load().Info(args...)
 }
 
 func Warn(args ...any) {
-	proxy.Warn(args...)
+	proxy.Load().Warn(args...)
+}
+
+func Warning(args ...any) {
+	proxy.Load().Warning(args...)
 }
 
 func Error(args ...any) {
-	proxy.Error(args...)
+	proxy.Load().Error(args...)
 }
 
 func Fatal(args ...any) {
-	proxy.Fatal(args...)
+	proxy.Load().Fatal(args...)
 }
 
 func Panic(args ...any) {
-	proxy.Panic(args...)
+	proxy.Load().Panic(args...)
+}
+
+func Printf(format string, args ...any) {
+	proxy.Load().Printf(format, args...)
 }
 
 func Tracef(format string, args ...any) {
-	proxy.Tracef(format, args...)
+	proxy.Load().Tracef(format, args...)
 }
 
 func Debugf(format string, args ...any) {
-	proxy.Debugf(format, args...)
+	proxy.Load().Debugf(format, args...)
 }
 
 func Infof(format string, args ...any) {
-	proxy.Infof(format, args...)
+	proxy.Load().Infof(format, args...)
 }
 
 func Warnf(format string, args ...any) {
-	proxy.Warnf(format, args...)
+	proxy.Load().Warnf(format, args...)
 }
 
 func Warningf(format string, args ...any) {
-	proxy.Warnf(format, args...)
+	proxy.Load().Warnf(format, args...)
 }
 
 func Errorf(format string, args ...any) {
-	proxy.Errorf(format, args...)
+	proxy.Load().Errorf(format, args...)
 }
 
 func Fatalf(format string, args ...any) {
-	proxy.Fatalf(format, args...)
+	proxy.Load().Fatalf(format, args...)
 }
 
 func Panicf(format string, args ...any) {
-	proxy.Panicf(format, args...)
+	proxy.Load().Panicf(format, args...)
 }
 
 func WithField(key string, value any) *Proxy {
-	return proxy.WithField(key, value)
+	return proxy.Load().WithField(key, value)
 }
 
 func WithFields(fields Fields) *Proxy {
-	return proxy.WithFields(fields)
+	return proxy.Load().WithFields(fields)
+}
+
+func WithError(err error) *Proxy {
+	return proxy.Load().WithError(err)
 }
 
 func WithContext(ctx context.Context) *Proxy {
-	return proxy.WithContext(ctx)
+	return proxy.Load().WithContext(ctx)
+}
+
+func Println(args ...any) {
+	proxy.Load().Println(args...)
 }
 
 func Traceln(args ...any) {
-	proxy.Traceln(args...)
+	proxy.Load().Traceln(args...)
 }
 
 func Debugln(args ...any) {
-	proxy.Debugln(args...)
+	proxy.Load().Debugln(args...)
 }
 
 func Infoln(args ...any) {
-	proxy.Infoln(args...)
+	proxy.Load().Infoln(args...)
 }
 
 func Warnln(args ...any) {
-	proxy.Warnln(args...)
+	proxy.Load().Warnln(args...)
 }
 
 func Warningln(args ...any) {
-	proxy.Warningln(args...)
+	proxy.Load().Warningln(args...)
 }
 
 func Errorln(args ...any) {
-	proxy.Errorln(args...)
+	proxy.Load().Errorln(args...)
 }
 
 func Fatalln(args ...any) {
-	proxy.Fatalln(args...)
+	proxy.Load().Fatalln(args...)
 }
 
 func Panicln(args ...any) {
-	proxy.Panicln(args...)
+	proxy.Load().Panicln(args...)
 }
