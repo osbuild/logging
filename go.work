@@ -4,11 +4,11 @@ toolchain go1.23.4
 
 use (
 	.
+	./internal/example_cli
 	./internal/example_export
 	./internal/example_logrus
 	./internal/example_print
 	./internal/example_sinit
 	./internal/example_splunk
 	./internal/example_web
-	./internal/example_cli
 )

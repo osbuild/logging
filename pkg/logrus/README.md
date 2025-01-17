@@ -34,6 +34,7 @@ func main() {
 	logrus.Errorf("number: %d", 42)
 	logrus.Panicf("number: %d", 42)
 
+	// context is supported and carries fields over to log/slog
 	logrus.WithContext(ctx).Trace("msg with context")
 	logrus.WithContext(ctx).Debug("msg with context")
 	logrus.WithContext(ctx).Info("msg with context")

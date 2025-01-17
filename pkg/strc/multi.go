@@ -26,12 +26,12 @@ var (
 
 // MultiHandler distributes records to multiple slog.Handler
 type MultiHandler struct {
-	handlers []slog.Handler
-	inGroup  bool
-	callback MultiCallback
+	handlers    []slog.Handler
+	inSpanGroup bool
+	callback    MultiCallback
 }
 
-type MultiCallback func(context.Context, []slog.Attr) error
+type MultiCallback func(context.Context, []slog.Attr) ([]slog.Attr, error)
 
 // NewMultiHandler distributes records to multiple slog.Handler
 func NewMultiHandler(handlers ...slog.Handler) *MultiHandler {
@@ -41,6 +41,7 @@ func NewMultiHandler(handlers ...slog.Handler) *MultiHandler {
 // NewMultiHandlerCustom distributes records to multiple slog.Handler
 // with custom attributes and callback. Pass static slice of attributes added
 // to the every record, and a callback that can add dynamic attributes from the context.
+// No custom fields are added to the "span" group.
 func NewMultiHandlerCustom(attrs []slog.Attr, callback MultiCallback, handlers ...slog.Handler) *MultiHandler {
 	a := make([]slog.Attr, 0, len(attrs)+1)
 	a = append(a, attrs...)
@@ -75,7 +76,7 @@ func (h *MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {
 func (h *MultiHandler) Handle(ctx context.Context, recOrig slog.Record) error {
 	r := recOrig.Clone()
 
-	if !h.inGroup {
+	if !h.inSpanGroup {
 		attrs := make([]slog.Attr, 0, 2)
 
 		// add optional trace_id attribute
@@ -86,9 +87,12 @@ func (h *MultiHandler) Handle(ctx context.Context, recOrig slog.Record) error {
 			})
 		}
 
-		// add zero or more optional attributes
+		// add zero or more attributes via callback
 		if h.callback != nil {
-			if err := h.callback(ctx, attrs); err != nil {
+			var err error
+			attrs, err = h.callback(ctx, attrs)
+
+			if err != nil {
 				return err
 			}
 		}
@@ -119,7 +123,7 @@ func (h *MultiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 
 	return &MultiHandler{
 		handlers: handlers,
-		inGroup:  true,
+		callback: h.callback,
 	}
 }
 
@@ -134,8 +138,9 @@ func (h *MultiHandler) WithGroup(name string) slog.Handler {
 	}
 
 	return &MultiHandler{
-		handlers: handlers,
-		inGroup:  true,
+		handlers:    handlers,
+		callback:    h.callback,
+		inSpanGroup: name == SpanGroupName,
 	}
 }
 

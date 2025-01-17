@@ -6,6 +6,7 @@ toolchain go1.23.4
 
 require (
 	github.com/getsentry/sentry-go v0.31.1
+	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/labstack/gommon v0.4.2
 	github.com/lzap/cloudwatchwriter2 v1.4.1

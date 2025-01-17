@@ -27,9 +27,13 @@ func subProcess(ctx context.Context) {
 	span.Event("an event")
 }
 
+var pairs = []strc.HeadfieldPair{
+	{HeaderName: "X-Request-Id", FieldName: "request_id"},
+}
+
 func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
-	middleware := strc.NewMiddleware(logger)
-	loggingMiddleware := strc.NewMiddlewareWithConfig(logger, strc.MiddlewareConfig{
+	m1 := strc.NewMiddleware(logger)
+	m2 := strc.NewMiddlewareWithConfig(logger, strc.MiddlewareConfig{
 		WithUserAgent:      true,
 		WithRequestBody:    true,
 		WithRequestHeader:  true,
@@ -37,12 +41,14 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 		WithResponseHeader: true,
 		Filters:            []strc.Filter{strc.IgnorePathPrefix("/metrics")},
 	})
+	m3 := strc.HeadfieldPairMiddleware(pairs)
 
 	s1 := echo.New()
 	s1.HideBanner = true
 	s1.HidePort = true
 	s1.Logger = echoproxy.NewProxyFor(logger)
-	s1.Use(echo.WrapMiddleware(middleware))
+	s1.Use(echo.WrapMiddleware(m1))
+	s1.Use(echo.WrapMiddleware(m3))
 	s1.GET("/", func(c echo.Context) error {
 		span, ctx := strc.Start(c.Request().Context(), "s1")
 		defer span.End()
@@ -50,7 +56,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 		subProcess(ctx)
 
 		slog.DebugContext(ctx, "slog msg", "service", "s1")
-		logrus.WithField("service", "s1").Debug("logrus msg")
+		logrus.WithContext(ctx).WithField("service", "s1").Debug("logrus msg")
 		c.Logger().Debug("echo msg 1")
 		c.Logger().Debugj(map[string]interface{}{"service": "s1", "msg": "echo msg 2"})
 
@@ -64,7 +70,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 	s2 := echo.New()
 	s2.HideBanner = true
 	s2.HidePort = true
-	s2.Use(echo.WrapMiddleware(middleware))
+	s2.Use(echo.WrapMiddleware(m1))
 	s2.GET("/", func(c echo.Context) error {
 		span, ctx := strc.Start(c.Request().Context(), "s2")
 		defer span.End()
@@ -87,7 +93,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 
 		subProcess(ctx)
 	})
-	mux3.Handle("/", loggingMiddleware(h3))
+	mux3.Handle("/", m2(h3))
 	go srv3.ListenAndServe()
 
 	return s1, s2, srv3
@@ -95,7 +101,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 
 func main() {
 	h := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: cleaner})
-	logger := slog.New(h)
+	logger := slog.New(strc.NewMultiHandlerCustom(nil, strc.HeadfieldPairCallback(pairs), h))
 	slog.SetDefault(logger)
 	strc.SetLogger(logger)
 	strc.SkipSource = true // for better readability
@@ -106,5 +112,8 @@ func main() {
 	defer s2.Close()
 	defer s3.Close()
 
-	http.Get("http://localhost:8131/")
+	client := http.Client{}
+	req, _ := http.NewRequest("GET", "http://localhost:8131/", nil)
+	req.Header.Add("X-Request-Id", "abcdef")
+	client.Do(req)
 }
