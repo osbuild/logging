@@ -1,3 +1,5 @@
 /.vscode
 /coverage.html
 /coverage.txt
+/coverage_data_examples
+/coverage_data_unittests
