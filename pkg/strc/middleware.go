@@ -14,6 +14,8 @@ var (
 	TraceIDKey = "trace_id"
 	SpanIDKey  = "span_id"
 
+	TraceHTTPHeaderName = "X-Trace-ID"
+
 	RequestBodyMaxSize  = 64 * 1024 // 64KB
 	ResponseBodyMaxSize = 64 * 1024 // 64KB
 
@@ -140,6 +142,10 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 				end := time.Now()
 				latency := end.Sub(start)
 
+				// add trace id to response header
+				w.Header().Add(TraceHTTPHeaderName, traceID.String())
+
+				// build attributes
 				baseAttributes := []slog.Attr{}
 
 				if config.WithTraceID {
