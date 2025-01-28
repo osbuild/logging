@@ -54,7 +54,7 @@ func TestTraceID(t *testing.T) {
 		t.Errorf("NewTraceID() = %s want something else", tid)
 	}
 
-	if r.Header.Get(traceHTTPHeader) != "LOlIxiHprrrvHqD" {
+	if r.Header.Get(TraceHTTPHeaderName) != "LOlIxiHprrrvHqD" {
 		t.Error("AddTraceIDHeader() did not add the header")
 	}
 }
@@ -116,7 +116,7 @@ func TestSpanID(t *testing.T) {
 		t.Errorf("NewSpanID() = %s want something else", sid)
 	}
 
-	if r.Header.Get(spanHTTPHeader) != "VIPEcES.yuufaHI" {
+	if r.Header.Get(SpanHTTPHeaderName) != "VIPEcES.yuufaHI" {
 		t.Error("AddSpanIDHeader() did not add the header")
 	}
 }
