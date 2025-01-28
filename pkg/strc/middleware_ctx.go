@@ -28,7 +28,7 @@ func HeadfieldPairMiddleware(pairs []HeadfieldPair) func(http.Handler) http.Hand
 }
 
 // HeadfieldPairCallback is a slog callback that extracts values from the context and adds them to the attributes.
-func HeadfieldPairCallback(pairs []HeadfieldPair) func(context.Context, []slog.Attr) ([]slog.Attr, error) {
+func HeadfieldPairCallback(pairs []HeadfieldPair) MultiCallback {
 	return func(ctx context.Context, a []slog.Attr) ([]slog.Attr, error) {
 		for _, p := range pairs {
 			if value, ok := ctx.Value(p).(string); ok {
