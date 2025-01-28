@@ -39,3 +39,7 @@ run-examples-cov: coverage_data_examples  ### Run examples tests with coverage
 .PHONY: run-examples
 run-examples:  ## Run examples tests
 	for d in internal/example_*; do go run github.com/osbuild/logging/$$d || exit 1; done
+
+.PHONY: release
+release: ## Inform GOPROXY about a new release
+	@GOPROXY=proxy.golang.org go list -m github.com/osbuild/logging@latest
