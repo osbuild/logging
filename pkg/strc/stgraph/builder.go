@@ -105,7 +105,7 @@ func (b *TraceBuilder) Process(r io.Reader, w io.Writer, format string) error {
 		rdy := b.Window.Append(&span)
 		if rdy {
 			spans := b.Window.Pop(span.TraceID)
-			if spans == nil || len(spans) < 1 {
+			if len(spans) < 1 {
 				return fmt.Errorf("empty trace: %s", span.TraceID)
 			}
 
