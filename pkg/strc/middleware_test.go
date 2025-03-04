@@ -233,6 +233,27 @@ func TestMiddlewareAddsToContext(t *testing.T) {
 	middleware(handler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
 }
 
+func TestMiddlewareDoesNotAddToContext(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+	middleware := strc.NewMiddlewareWithConfig(logger, strc.MiddlewareConfig{
+		NoTraceContext: true,
+	})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tid := strc.TraceIDFromContext(r.Context())
+		sid := strc.SpanIDFromContext(r.Context())
+
+		if tid != strc.EmptyTraceID {
+			t.Errorf("expected trace id to by empty")
+		}
+
+		if sid != strc.EmptySpanID {
+			t.Errorf("expected span id to be empty")
+		}
+	})
+
+	middleware(handler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
+}
+
 func TestMiddlewareAddsTraceCtxAndHeaders(t *testing.T) {
 	var tid strc.TraceID
 

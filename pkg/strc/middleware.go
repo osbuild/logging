@@ -64,11 +64,21 @@ type MiddlewareConfig struct {
 	// WithSpanID enables logging of the span ID. Defaults to false.
 	WithSpanID bool
 
+	// NoExtractTraceID disables extracting trace id from incoming requests. Defaults to false.
+	NoTraceContext bool
+
 	// Filters is a list of filters to apply before logging. Optional.
 	Filters []Filter
 }
 
 // NewMiddleware returns a `func(http.Handler) http.Handler` (middleware) that logs requests using slog.
+//
+// In addition to that, it also extracts span id and trace id from incoming requests and puts them into
+// the context. If the request does not have a trace id, a new one is generated. This feature can be
+// disabled.
+//
+// Finally, it can be configured to dump request and response bodies, request and response headers,
+// and user agent.
 //
 // Requests with errors are logged using slog.Error().
 // Requests without errors are logged using slog.Info().
@@ -124,18 +134,21 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 
 			// trace id
 			ctx := r.Context()
-			traceID := TraceIDFromRequest(r)
 			var returnTraceID bool
+			traceID := TraceIDFromRequest(r)
 			if traceID == EmptyTraceID {
 				traceID = NewTraceID()
 				returnTraceID = true
 			}
-			ctx = WithTraceID(ctx, traceID)
 
 			// span id
 			spanID := SpanIDFromRequest(r)
-			ctx = WithSpanID(ctx, spanID)
-			r = r.WithContext(ctx)
+
+			if !config.NoTraceContext {
+				ctx = WithTraceID(ctx, traceID)
+				ctx = WithSpanID(ctx, spanID)
+				r = r.WithContext(ctx)
+			}
 
 			defer func() {
 				status := bw.Status()
@@ -143,18 +156,18 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 				latency := end.Sub(start)
 
 				// add trace id to response header
-				if returnTraceID {
+				if returnTraceID && !config.NoTraceContext {
 					w.Header().Add(TraceHTTPHeaderName, traceID.String())
 				}
 
 				// build attributes
 				baseAttributes := []slog.Attr{}
 
-				if config.WithTraceID {
+				if config.WithTraceID && !config.NoTraceContext {
 					baseAttributes = append(baseAttributes, slog.String(TraceIDKey, traceID.String()))
 				}
 
-				if config.WithSpanID {
+				if config.WithSpanID && !config.NoTraceContext {
 					baseAttributes = append(baseAttributes, slog.String(SpanIDKey, spanID.String()))
 				}
 
