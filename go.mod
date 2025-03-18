@@ -8,9 +8,17 @@ require (
 	github.com/getsentry/sentry-go v0.31.1
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/go-retryablehttp v0.7.7
+	github.com/jackc/pgx/v5 v5.7.2
 	github.com/labstack/gommon v0.4.2
 	github.com/lzap/cloudwatchwriter2 v1.4.1
+	github.com/mcosta74/pgx-slog v0.4.1
 	github.com/samber/slog-sentry/v2 v2.9.2
+)
+
+require (
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 )
 
 require (

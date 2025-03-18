@@ -137,6 +137,9 @@ var handlerMulti *strc.MultiHandler
 var handlerSplunk *splunk.SplunkHandler
 var handlerCloudWatch *cloudwatchwriter2.Handler
 
+// The main logger instance. Use InitializeLogging to create it.
+var logger *slog.Logger
+
 // InitializeLogging initializes the logging system with the provided configuration. Use Flush to ensure all logs are written before exiting.
 // Subsequent calls to InitializeLogging will have no effect and will not return any error.
 func InitializeLogging(ctx context.Context, config LoggingConfig) error {
@@ -237,7 +240,7 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		)
 
 		// configure slog
-		logger := slog.New(handlerMulti)
+		logger = slog.New(handlerMulti)
 		slog.SetDefault(logger)
 
 		// configure tracing
