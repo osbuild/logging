@@ -13,3 +13,11 @@ export AWS_KEY=xxx
 export SENTRY_DSN=xxx
 go run github.com/osbuild/logging/internal/example_sinit/
 ```
+
+### pgx logging
+
+This package provides a function which returns a wrapper that can be used for pgx SQL driver logging:
+
+```go
+pgxConfig.Tracer = sinit.PgxTracer(slog.Default())
+```

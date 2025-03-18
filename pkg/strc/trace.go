@@ -27,42 +27,44 @@ var ParentIDName string = "parent"
 // SkipSource is a flag that disables source logging.
 var SkipSource bool
 
-var destination atomic.Pointer[slog.Logger]
+var tracer atomic.Pointer[Tracer]
 
 func init() {
-	destination.Store(slog.New(&NoopHandler{}))
+	SetNoopLogger()
 }
 
 // SetLogger sets the logger for the package.
-func SetLogger(lg *slog.Logger) {
-	destination.Store(lg.WithGroup(SpanGroupName))
+func SetLogger(logger *slog.Logger) {
+	tracer.Store(NewTracer(logger))
 }
 
 // SetNoopLogger sets a no-op logger for the package.
 func SetNoopLogger() {
-	destination.Store(slog.New(&NoopHandler{}))
+	tracer.Store(NewTracer(slog.New(&NoopHandler{})))
 }
 
-func logger() *slog.Logger {
-	return destination.Load()
+// Tracer is a wrapper for slog.Logger which logs into the initialized slog. Use strc.Start
+// and End package functions to use slog.Default() logger.
+type Tracer struct {
+	logger *slog.Logger
 }
 
+// NewTracer creates a new Tracer with the given logger. Use strc.Start and End package functions
+// to use slog.Default() logger.
+func NewTracer(logger *slog.Logger) *Tracer {
+	return &Tracer{logger: logger.WithGroup(SpanGroupName)}
+}
+
+// Span represents a span of a trace. It is used to log events and end the span.
+// It is a lightweight object and can be passed around in contexts.
 type Span struct {
 	ctx     context.Context
+	tracer  *Tracer
 	name    string
 	tid     TraceID
 	sid     SpanID
 	args    []any
 	started time.Time
-}
-
-func callerPtr(skip int) string {
-	_, file, line, ok := runtime.Caller(skip)
-	if !ok {
-		return ""
-	}
-
-	return file + ":" + fmt.Sprint(line)
 }
 
 // Start starts a new span with the given name and optional arguments. All arguments are present in
@@ -71,9 +73,16 @@ func callerPtr(skip int) string {
 //	span, ctx := strc.Start(ctx, "calculating something big")
 //	defer span.End()
 //
+// Avoid adding complex arguments to spans as they are added to the context.
+//
 // It immediately logs a message with the span name, span information in SpanGroupName and optional
 // arguments.
 func Start(ctx context.Context, name string, args ...any) (*Span, context.Context) {
+	return tracer.Load().Start(ctx, name, args...)
+}
+
+// Start starts a new span, see strc.Start for more information.
+func (t *Tracer) Start(ctx context.Context, name string, args ...any) (*Span, context.Context) {
 	tid := TraceIDFromContext(ctx)
 	if tid == EmptyTraceID {
 		tid = NewTraceID()
@@ -85,6 +94,7 @@ func Start(ctx context.Context, name string, args ...any) (*Span, context.Contex
 
 	span := &Span{
 		ctx:     ctx,
+		tracer:  t,
 		name:    name,
 		tid:     tid,
 		sid:     sid,
@@ -92,7 +102,7 @@ func Start(ctx context.Context, name string, args ...any) (*Span, context.Contex
 		started: time.Now(),
 	}
 
-	if !logger().Enabled(ctx, Level) {
+	if !t.logger.Enabled(ctx, Level) {
 		// Return early if logging is disabled with all arguments in case
 		// level changes during span lifetime. But we still need to return
 		// the span and context.
@@ -109,10 +119,10 @@ func Start(ctx context.Context, name string, args ...any) (*Span, context.Contex
 	)
 
 	if !SkipSource {
-		attrs = append(attrs, slog.String(slog.SourceKey, callerPtr(2)))
+		attrs = append(attrs, slog.String(slog.SourceKey, callerPtr(3)))
 	}
 
-	logger := logger()
+	logger := t.logger
 	if len(args) > 0 {
 		logger = logger.With(args...)
 	}
@@ -126,7 +136,7 @@ func Start(ctx context.Context, name string, args ...any) (*Span, context.Contex
 // It immediately logs a message with the span name, span information in SpanGroupName and
 // optional arguments.
 func (s *Span) Event(name string, args ...any) {
-	if !logger().Enabled(s.ctx, Level) {
+	if !s.tracer.logger.Enabled(s.ctx, Level) {
 		return
 	}
 
@@ -145,7 +155,7 @@ func (s *Span) Event(name string, args ...any) {
 		attrs = append(attrs, slog.String(slog.SourceKey, callerPtr(2)))
 	}
 
-	logger := logger()
+	logger := s.tracer.logger
 	if len(s.args) > 0 {
 		logger = logger.With(s.args...)
 	}
@@ -161,7 +171,7 @@ func (s *Span) Event(name string, args ...any) {
 // It immediately logs a message with the span name, span information in SpanGroupName and
 // optional arguments.
 func (s *Span) End(args ...any) {
-	if !logger().Enabled(s.ctx, Level) {
+	if !s.tracer.logger.Enabled(s.ctx, Level) {
 		return
 	}
 	dur := time.Since(s.started)
@@ -180,7 +190,7 @@ func (s *Span) End(args ...any) {
 		attrs = append(attrs, slog.String(slog.SourceKey, callerPtr(2)))
 	}
 
-	logger := logger()
+	logger := s.tracer.logger
 	if len(s.args) > 0 {
 		logger = logger.With(s.args...)
 	}
@@ -188,4 +198,13 @@ func (s *Span) End(args ...any) {
 		logger = logger.With(args...)
 	}
 	logger.LogAttrs(s.ctx, Level, fmt.Sprintf("span %s finished in %v", s.name, dur), attrs...)
+}
+
+func callerPtr(skip int) string {
+	_, file, line, ok := runtime.Caller(skip)
+	if !ok {
+		return ""
+	}
+
+	return file + ":" + fmt.Sprint(line)
 }

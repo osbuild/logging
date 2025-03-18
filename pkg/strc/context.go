@@ -13,6 +13,7 @@ type key int
 const (
 	traceIDKey key = iota
 	spanIDKey  key = iota
+	spanKey    key = iota
 
 	traceLength = 15 // ojtlqPCGXEWytHg
 	spanLength  = 7  // aCBzdka.NjPdyjv
@@ -118,6 +119,24 @@ func SpanIDFromContext(ctx context.Context) SpanID {
 // Start returns a new context with span ID.
 func WithSpanID(ctx context.Context, spanID SpanID) context.Context {
 	return context.WithValue(ctx, spanIDKey, spanID)
+}
+
+// Start returns span from a context or nil if it was not found.
+func SpanFromContext(ctx context.Context) *Span {
+	if ctx == nil {
+		return nil
+	}
+
+	if v := ctx.Value(spanKey); v != nil {
+		return v.(*Span)
+	}
+
+	return nil
+}
+
+// Start returns a new context with span.
+func WithSpan(ctx context.Context, span *Span) context.Context {
+	return context.WithValue(ctx, spanKey, span)
 }
 
 // SpanIDFromRequest returns span ID from a request. If span ID is not found, it returns EmptySpanID.
