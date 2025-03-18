@@ -1,10 +1,12 @@
 package collect
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
 	"runtime"
+	"sort"
 	"sync"
 )
 
@@ -177,6 +179,34 @@ func (h *CollectorHandler) All() []map[string]any {
 	defer h.data.mu.RUnlock()
 
 	return h.data.fields
+}
+
+// Can be replaced by slices.SortedKeys after Go 1.23+ upgrade
+func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
+	keys := make([]K, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	return keys
+}
+
+// String returns all records formatted as a string.
+func (h *CollectorHandler) String() string {
+	h.data.mu.RLock()
+	defer h.data.mu.RUnlock()
+
+	var s string
+	for _, m := range h.data.fields {
+		var keys []string
+		for _, k := range sortedKeys(m) {
+			keys = append(keys, fmt.Sprintf("%s=%v", k, m[k]))
+		}
+		s += fmt.Sprintf("%s\n", keys)
+	}
+	return s
 }
 
 // Reset removes all Entries from this test hook.
