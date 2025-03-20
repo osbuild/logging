@@ -171,6 +171,7 @@ func TestTraceExporterPC(t *testing.T) {
 			},
 			skipSource: true,
 			want: []slog.Attr{
+				slog.Group("span", "k1", "v1"),
 				slog.Group("span", "name", "process"),
 				slog.Group("span", "id", "IvQORsV"),
 				slog.Group("span", "parent", "0000000"),
@@ -190,6 +191,7 @@ func TestTraceExporterPC(t *testing.T) {
 				slog.Group("span", "parent", "IvQORsV"),
 				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
 				slog.Group("span", "dur", "0s"),
+				slog.Group("span", "k1", "v1"),
 				slog.Group("span", "name", "process"),
 				slog.Group("span", "id", "IvQORsV"),
 				slog.Group("span", "parent", "0000000"),
@@ -203,6 +205,7 @@ func TestTraceExporterPC(t *testing.T) {
 				process(context.Background())
 			},
 			want: []slog.Attr{
+				slog.Group("span", "k1", "v1"),
 				slog.Group("span", "name", "process"),
 				slog.Group("span", "id", "IvQORsV"),
 				slog.Group("span", "parent", "0000000"),
@@ -226,6 +229,7 @@ func TestTraceExporterPC(t *testing.T) {
 				slog.Group("span", "trace", "bqzcRlJahlbbBZH"),
 				slog.Group("span", "dur", "0s"),
 				slog.Group("span", "source", "exporter_test.go:0"),
+				slog.Group("span", "k1", "v1"),
 				slog.Group("span", "name", "process"),
 				slog.Group("span", "id", "IvQORsV"),
 				slog.Group("span", "parent", "0000000"),
@@ -241,6 +245,7 @@ func TestTraceExporterPC(t *testing.T) {
 			},
 			includeTime: true,
 			want: []slog.Attr{
+				slog.Group("span", "k1", "v1"),
 				slog.Group("span", "name", "process"),
 				slog.Group("span", "id", "IvQORsV"),
 				slog.Group("span", "parent", "0000000"),
@@ -268,6 +273,7 @@ func TestTraceExporterPC(t *testing.T) {
 				slog.Group("span", "dur", "0s"),
 				slog.Group("span", "source", "exporter_test.go:0"),
 				slog.Group("span", "time", tm),
+				slog.Group("span", "k1", "v1"),
 				slog.Group("span", "name", "process"),
 				slog.Group("span", "id", "IvQORsV"),
 				slog.Group("span", "parent", "0000000"),
