@@ -50,6 +50,14 @@ doSomething(ctx)
 
 Of course, small functions that will unlikely do any logging or call an external service do not need a context.
 
+When echo library is used, an optional echo logging proxy can be used to redirect logs into slog thus echo logging can be kept in use. But prefer structured logging:
+
+```go
+echo.Infof("Do not do this: %s", "string")
+
+echo.Infoj("use infoj method instead", map[string]any{"msg": "test"})
+```
+
 The library provides trace correlation from HTTP headers, middleware can be used both with plain HTTP handlers or echo library:
 
 ```go
