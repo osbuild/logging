@@ -80,7 +80,7 @@ CuGxqNWiQCOCfJc.calculate;sum;add 40449
 CuGxqNWiQCOCfJc.calculate;sum;add 20185
 ```
 
-## Example raw JSON data
+## Example raw JSON data
 
 Copy and paste this to the stdin of the `stgraph` to see it in action:
 
