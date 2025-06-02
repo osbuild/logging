@@ -123,7 +123,7 @@ A small utility that accepts JSON from Splunk/Kibana/Cloudwatch and generates a 
 go run github.com/osbuild/logging/internal/example_cli/
 ```
 
-See [strc](pkg/strc/stgraph) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/strc/stgraph) for more info.
+See [strc](pkg/strc) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/strc) for more info.
 
 The generated SVG file is interactive and one can drill down the stack with a mouse click, the file needs to be opened in a new browser panel tho:
 
@@ -137,7 +137,7 @@ See [example_print](internal/example_print/main.go) and [example_export](interna
 go run github.com/osbuild/logging/internal/example_print/
 ```
 
-See [strc](pkg/strc) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/strc) for more info.
+See [stgraph](pkg/strc/stgraph) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/strc/stgraph) for more info.
 
 ### logrus - proxy to slog
 
