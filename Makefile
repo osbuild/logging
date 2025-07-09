@@ -18,8 +18,12 @@ clean: ## clean all build and test artifacts
 	rm -rf coverage.{txt,html}
 
 .PHONY: unit-tests
-unit-tests: coverage_data_unittests ## Run all tests
+unit-tests: coverage_data_unittests ## Run all tests with coverage
 	go test -race -v -covermode=atomic ./... -args -test.gocoverdir="$(shell pwd)/coverage_data_unittests"
+
+.PHONY: test
+test: ## Run tests without coverage
+	go test -race ./...
 
 .PHONY: lint
 lint:  ## run linter / static checker
