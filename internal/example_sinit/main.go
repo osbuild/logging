@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"time"
@@ -12,6 +13,10 @@ import (
 
 func main() {
 	cfg := sinit.LoggingConfig{
+		StdlibLogConfig: sinit.StdlibLogConfig{
+			Enabled: true,
+			Level:   slog.LevelDebug,
+		},
 		StdoutConfig: sinit.StdoutConfig{
 			Enabled: true,
 			Level:   "debug",
@@ -68,6 +73,8 @@ func main() {
 	)
 
 	slog.ErrorContext(ctx, "an error occured", "err", "this is an error")
+
+	log.Println("This is a log message from the standard library logger")
 
 	span.End()
 }

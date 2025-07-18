@@ -23,6 +23,8 @@ import (
 
 // LoggingConfig is the configuration for the logging system.
 type LoggingConfig struct {
+	StdlibLogConfig StdlibLogConfig
+
 	StdoutConfig StdoutConfig
 
 	JournalConfig JournalConfig
@@ -36,6 +38,20 @@ type LoggingConfig struct {
 	TracingConfig TracingConfig
 
 	LogrusConfig LogrusConfig
+}
+
+// StdlibLogConfig is the configuration for the proxy of the standard library logger. When enabled, all
+// log entries written to the standard library log package will be forwarded to the slog logger.
+// Use log.Writer() to get a standard library writer when needed.
+type StdlibLogConfig struct {
+	// Enabled is a flag to enable the standard library logger proxy.
+	Enabled bool
+
+	// Level to use when writing to the standard library logger. Info by default.
+	Level slog.Level
+
+	// Flags for the standard logger set via SetFlags
+	Flags int
 }
 
 // StdoutConfig is the configuration for the standard output.
@@ -151,6 +167,8 @@ type resources struct {
 	handlerCloudWatch *cloudwatchwriter2.Handler
 	sentryEnabled     bool
 	prevSlogger       *slog.Logger
+	prevStdLogger     io.Writer
+	prevStdFlags      int
 }
 
 var (
@@ -277,6 +295,21 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 	// configure tracing
 	if config.TracingConfig.Enabled {
 		strc.SetLogger(logger)
+	}
+
+	// configure standard library logger: standard library contains log and
+	// log/slog packages and also a type and a helper function NewLogLogger
+	// that works as a proxy. The default log logger cannot be swapped with
+	// a new one therefore a writer interface must be implemented to be able
+	// to call SetOutput.
+	if config.StdlibLogConfig.Enabled {
+		res.prevStdLogger = log.Writer()
+		res.prevStdFlags = log.Flags()
+		
+		logger := slog.NewLogLogger(res.handlerMulti, config.StdlibLogConfig.Level)
+		writer := &logLoggerWriter{dest: logger}
+		log.SetFlags(config.StdlibLogConfig.Flags)
+		log.SetOutput(writer)
 	}
 
 	// configure logrus proxy

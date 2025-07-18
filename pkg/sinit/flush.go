@@ -3,6 +3,7 @@ package sinit
 import (
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"sync"
 	"time"
@@ -117,10 +118,18 @@ func Close(timeout time.Duration) error {
 	wg.Wait()
 	close(errs)
 
-	// Close standard logger
+	// Close slog logger
 	if res.prevSlogger != nil {
 		slog.SetDefault(res.prevSlogger)
 		res.prevSlogger = nil
+	}
+
+	// Close stdlib logger
+	if res.prevStdLogger != nil {
+		log.SetOutput(res.prevStdLogger)
+		log.SetFlags(res.prevStdFlags)
+		res.prevStdLogger = nil
+		res.prevStdFlags = 0
 	}
 
 	// Close strc logger
