@@ -2,6 +2,8 @@
 
 A temporary `logrus` proxy to `log/slog`. Only used for the transition period until our projects are fully migrated. Please keep in mind this is an incomplete implementation, only functions used in osbuild projects are present.
 
+By default, the proxy does not exit on `Fatal` or panic on `Panic` calls, this needs to be explicitly enabled via argument in `logrus.NewProxyFor` function.
+
 ### How to use
 
 ```go
