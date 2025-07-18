@@ -158,6 +158,11 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 	initOnce.Do(func() {
 		var handlers []slog.Handler
 
+		hostname, _ := os.Hostname()
+		if config.SplunkConfig.Hostname == "" {
+			config.SplunkConfig.Hostname = hostname
+		}
+
 		if err := validate(config); err != nil {
 			outerError = fmt.Errorf("logging configuration validation error: %w", err)
 			return
