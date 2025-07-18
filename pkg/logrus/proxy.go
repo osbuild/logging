@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"sync/atomic"
 )
 
 // Proxy is a proxy type for logrus.Logger
 type Proxy struct {
-	dest *slog.Logger
-	ctx  context.Context
+	dest        *slog.Logger
+	ctx         context.Context
+	exitOnFatal bool
 }
 
 var proxy atomic.Pointer[Proxy]
@@ -21,22 +23,25 @@ func init() {
 	proxy.Store(NewDiscardProxy())
 }
 
-// NewProxyFor creates a new Proxy for a particular logger
-func NewProxyFor(logger *slog.Logger) *Proxy {
+// NewProxyFor creates a new Proxy for a particular logger. When exitOnFatal is true, the logger will exit
+// the process on fatal errors and panic on panic calls.
+func NewProxyFor(logger *slog.Logger, exitOnFatal bool) *Proxy {
 	return &Proxy{
-		dest: logger.With(slog.Bool("logrus", true)),
-		ctx:  context.Background(),
+		dest:        logger.With(slog.Bool("logrus", true)),
+		ctx:         context.Background(),
+		exitOnFatal: exitOnFatal,
 	}
 }
 
-// NewProxy creates a new Proxy for the standard logger
+// NewProxy creates a new Proxy for the standard logger. It does not exit on fatal
+// errors. To do that, use NewProxyFor with exitOnFatal set to true.
 func NewProxy() *Proxy {
-	return NewProxyFor(slog.Default())
+	return NewProxyFor(slog.Default(), false)
 }
 
 // NewDiscardProxy creates a new Proxy which discards all logs. This is the default logger when not set.
 func NewDiscardProxy() *Proxy {
-	return NewProxyFor(slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError})))
+	return NewProxyFor(slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError})), false)
 }
 
 // NewEntry creates a new Proxy for the standard logger. Proxy must be passed as an argument.
@@ -139,10 +144,16 @@ func (p *Proxy) Error(args ...any) {
 
 func (p *Proxy) Fatal(args ...any) {
 	p.Error(args...)
+	if p.exitOnFatal {
+		os.Exit(1)
+	}
 }
 
 func (p *Proxy) Panic(args ...any) {
 	p.Error(args...)
+	if p.exitOnFatal {
+		panic(strings.Join(anyToString(args), " "))
+	}
 }
 
 func (p *Proxy) Tracef(format string, args ...any) {

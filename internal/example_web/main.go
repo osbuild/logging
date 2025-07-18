@@ -105,7 +105,7 @@ func main() {
 	slog.SetDefault(logger)
 	strc.SetLogger(logger)
 	strc.SkipSource = true // for better readability
-	logrus.SetDefault(logrus.NewProxyFor(logger))
+	logrus.SetDefault(logrus.NewProxyFor(logger, false))
 
 	s1, s2, s3 := startServers(logger)
 	defer s1.Close()

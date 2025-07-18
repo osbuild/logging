@@ -34,6 +34,8 @@ type LoggingConfig struct {
 	SentryConfig SentryConfig
 
 	TracingConfig TracingConfig
+
+	LogrusConfig LogrusConfig
 }
 
 // StdoutConfig is the configuration for the standard output.
@@ -130,6 +132,17 @@ type TracingConfig struct {
 	// ContextCallback is an optional callback function that is called for each log entry
 	// to add additional attributes to the log entry.
 	ContextCallback strc.MultiCallback
+}
+
+// LogrusConfig is the configuration for the logrus proxy.
+type LogrusConfig struct {
+	// Enabled is a flag to enable logrus proxy.
+	Enabled bool
+
+	// ExitOnFatal is a flag to enable exiting the process on fatal log entries.
+	// If set to true, the process will exit with status code 1 on fatal log entries as
+	// wel as panic log entries.
+	ExitOnFatal bool
 }
 
 var initOnce sync.Once
@@ -246,7 +259,9 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		}
 
 		// configure logrus proxy
-		logrus.SetDefault(logrus.NewProxyFor(logger))
+		if config.LogrusConfig.Enabled {
+			logrus.SetDefault(logrus.NewProxyFor(logger, config.LogrusConfig.ExitOnFatal))
+		}
 	})
 
 	return outerError
