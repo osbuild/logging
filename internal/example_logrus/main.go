@@ -12,7 +12,7 @@ import (
 func main() {
 	ctx := context.Background()
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	logrus.SetDefault(logrus.NewProxy())
+	logrus.SetDefault(logrus.NewProxyFor(slog.Default(), logrus.Options{NoExit: true}))
 
 	logrus.Println("print")
 	logrus.Traceln("trace")

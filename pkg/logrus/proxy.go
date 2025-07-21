@@ -17,31 +17,35 @@ type Proxy struct {
 	exitOnFatal bool
 }
 
+type Options struct {
+	NoExit bool // If true, the process will not exit on fatal/panic log entries.
+}
+
 var proxy atomic.Pointer[Proxy]
 
 func init() {
 	proxy.Store(NewDiscardProxy())
 }
 
-// NewProxyFor creates a new Proxy for a particular logger. When exitOnFatal is true, the logger will exit
+// NewProxyFor creates a new Proxy for a particular logger. When options.NoExit is true, the logger will not exit
 // the process on fatal errors and panic on panic calls.
-func NewProxyFor(logger *slog.Logger, exitOnFatal bool) *Proxy {
+func NewProxyFor(logger *slog.Logger, options Options) *Proxy {
 	return &Proxy{
 		dest:        logger.With(slog.Bool("logrus", true)),
 		ctx:         context.Background(),
-		exitOnFatal: exitOnFatal,
+		exitOnFatal: !options.NoExit,
 	}
 }
 
 // NewProxy creates a new Proxy for the standard logger. It does not exit on fatal
 // errors. To do that, use NewProxyFor with exitOnFatal set to true.
 func NewProxy() *Proxy {
-	return NewProxyFor(slog.Default(), false)
+	return NewProxyFor(slog.Default(), Options{})
 }
 
 // NewDiscardProxy creates a new Proxy which discards all logs. This is the default logger when not set.
 func NewDiscardProxy() *Proxy {
-	return NewProxyFor(slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError})), false)
+	return NewProxyFor(slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError})), Options{})
 }
 
 // NewEntry creates a new Proxy for the standard logger. Proxy must be passed as an argument.

@@ -232,7 +232,7 @@ func TestLogrusProxy(t *testing.T) {
 
 	ch := collect.NewTestHandler(slog.LevelDebug, false, false, false)
 	logger := slog.New(ch)
-	p := NewProxyFor(logger, false)
+	p := NewProxyFor(logger, Options{NoExit: true})
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("t-%d", i), func(t *testing.T) {
@@ -249,7 +249,7 @@ func TestLogrusProxy(t *testing.T) {
 func TestLogrusProxyFuncs(t *testing.T) {
 	ch := collect.NewTestHandler(slog.LevelDebug, false, false, false)
 	logger := slog.New(ch)
-	SetDefault(NewProxyFor(logger, false))
+	SetDefault(NewProxyFor(logger, Options{NoExit: true}))
 	defer SetDefault(nil)
 
 	Traceln("trace")

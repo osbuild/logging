@@ -260,7 +260,9 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 
 		// configure logrus proxy
 		if config.LogrusConfig.Enabled {
-			logrus.SetDefault(logrus.NewProxyFor(logger, config.LogrusConfig.ExitOnFatal))
+			logrus.SetDefault(logrus.NewProxyFor(logger, logrus.Options{
+				NoExit: !config.LogrusConfig.ExitOnFatal,
+			}))
 		}
 	})
 
