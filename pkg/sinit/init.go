@@ -163,6 +163,10 @@ var (
 	ErrSentryInitialization = errors.New("sentry initialization error")
 )
 
+var hostnameFunc = func() (name string, err error) {
+	return os.Hostname()
+}
+
 // InitializeLogging initializes the logging system with the provided
 // configuration. Use Close to ensure all logs are written before exiting.
 // Subsequent calls to InitializeLogging will lead to ErrAlreadyInitialized.
@@ -213,6 +217,15 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 	}
 
 	if config.SplunkConfig.Enabled {
+			if config.SplunkConfig.Hostname == "" {
+				hostname, err := hostnameFunc()
+				if err != nil {
+					return fmt.Errorf("failed to get hostname: %w", err)
+				}
+
+				config.SplunkConfig.Hostname = hostname
+			}
+
 		c := splunk.SplunkConfig{
 			Level:    parseLevel(config.SplunkConfig.Level),
 			URL:      config.SplunkConfig.URL,
