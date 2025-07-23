@@ -48,3 +48,15 @@ func TestValidationSplunkURLInvalid(t *testing.T) {
 		t.Fatalf("expected ErrInvalidURL error, got %v", err)
 	}
 }
+
+func TestValidationSplunkEmptyURL(t *testing.T) {
+	cfg := LoggingConfig{
+		SplunkConfig: SplunkConfig{
+			Enabled: true,
+		},
+	}
+
+	if err := validate(cfg); !errors.Is(err, ErrInvalidURL) {
+		t.Fatalf("expected ErrInvalidURL error, got %v", err)
+	}
+}
