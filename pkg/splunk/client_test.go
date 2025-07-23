@@ -54,13 +54,14 @@ func TestSplunkLoggerRetry(t *testing.T) {
 		}
 		ch <- true
 	}))
+	defer srv.Close()
 
 	sl := newSplunkLogger(context.Background(), srv.URL, "token", "source", "hostname", 0)
 	_, err := sl.event([]byte("{}\n"))
 	if err != nil {
 		t.Error(err)
 	}
-	defer sl.close()
+	sl.close()
 
 	if !<-ch {
 		t.Error("timeout")
@@ -95,6 +96,7 @@ func TestSplunkLoggerContext(t *testing.T) {
 		}
 		ch <- true
 	}))
+	defer srv.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
@@ -103,6 +105,7 @@ func TestSplunkLoggerContext(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	sl.close()
 
 	if !<-ch {
 		t.Error("timeout")
