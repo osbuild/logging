@@ -146,6 +146,7 @@ type LogrusConfig struct {
 }
 
 var initOnce sync.Once
+var flushMu sync.Mutex
 var handlerMulti *strc.MultiHandler
 var handlerSplunk *splunk.SplunkHandler
 var handlerCloudWatch *cloudwatchwriter2.Handler
@@ -271,6 +272,9 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 
 // Flush flushes all pending logs to the configured outputs. Blocks until all logs are written.
 func Flush() {
+	flushMu.Lock()
+	defer flushMu.Unlock()
+
 	if handlerSplunk != nil {
 		handlerSplunk.Close()
 	}

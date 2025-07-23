@@ -48,3 +48,20 @@ func TestValidationSplunkURLInvalid(t *testing.T) {
 		t.Fatalf("expected ErrInvalidURL error, got %v", err)
 	}
 }
+
+func TestValidationSplunkFlushRacy(t *testing.T) {
+	ctx := context.Background()
+	cfg := LoggingConfig{
+		SplunkConfig: SplunkConfig{
+			Enabled: true,
+			URL:     "http://example.com/splunk",
+		},
+	}
+	err := InitializeLogging(ctx, cfg)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	go Flush()
+	go Flush()
+}
