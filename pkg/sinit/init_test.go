@@ -48,3 +48,18 @@ func TestValidationSplunkURLInvalid(t *testing.T) {
 		t.Fatalf("expected ErrInvalidURL error, got %v", err)
 	}
 }
+
+func TestInitLoggingRunTwice(t *testing.T) {
+	ctx := context.Background()
+	cfg := LoggingConfig{
+		SplunkConfig: SplunkConfig{
+			Enabled: true,
+		},
+	}
+	err := InitializeLogging(ctx, cfg)
+	assert.NoError(t, err)
+
+	// this should now error
+	err = InitializeLogging(ctx, LoggingConfig{})
+	assert.EqualError(t, err, "already initialized")
+}
