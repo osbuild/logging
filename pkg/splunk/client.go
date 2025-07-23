@@ -39,9 +39,10 @@ type splunkLogger struct {
 	source   string
 	hostname string
 
-	pool     sync.Pool
-	payloads chan []byte
-	active   atomic.Bool
+	pool      sync.Pool
+	payloads  chan []byte
+	active    atomic.Bool
+	closeOnce sync.Once
 
 	payloadsChannelSize int
 	maximumSize         int
@@ -222,24 +223,35 @@ func (sl *splunkLogger) flush() {
 	sl.payloads <- []byte("")
 }
 
-// close will flush the buffer, close the channel and wait until all payloads are sent,
-// not longer than 2 seconds. It is safe to call close multiple times. After close is called
-// the client will not accept any new events, all attemtps to send new events will return
-// ErrFullOrClosed.
-func (sl *splunkLogger) close() {
-	if !sl.active.Load() {
-		return
-	}
-	close(sl.payloads)
-
-	timeout := time.Now().Add(2 * time.Second)
-	for sl.active.Load() {
-		time.Sleep(10 * time.Millisecond)
-
-		if time.Now().After(timeout) {
-			break
+// close will flush the buffer, close the channel and wait until all payloads
+// are sent, not longer than 2 seconds. It is safe to call close multiple times.
+// After close is called the client will not accept any new events, all attemtps
+// to send new events will return ErrFullOrClosed.
+//
+// Returns true if timeout was not reached and all payloads were sent, false if
+// the timeout was reached or if the logger was already closed.
+func (sl *splunkLogger) close(timeout time.Duration) bool {
+	var result bool
+	
+	sl.closeOnce.Do(func() {
+		if !sl.active.Load() {
+			return
 		}
-	}
+		close(sl.payloads)
+
+		timeout := time.Now().Add(timeout)
+		for sl.active.Load() {
+			time.Sleep(10 * time.Millisecond)
+
+			if time.Now().After(timeout) {
+				return
+			}
+		}
+
+		result = true
+	})
+
+	return result
 }
 
 // event will create a new event and send it to the payloads channel. It will return
