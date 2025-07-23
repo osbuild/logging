@@ -43,6 +43,7 @@ type splunkLogger struct {
 	payloads  chan []byte
 	active    atomic.Bool
 	closeOnce sync.Once
+	flushMu   sync.Mutex
 
 	payloadsChannelSize int
 	maximumSize         int
@@ -220,6 +221,9 @@ func (sl *splunkLogger) sendPayloads(buf *bytes.Buffer) error {
 // flush will cause the logger to flush the current buffer. It does not block, there is no
 // guarantee that the buffer will be flushed immediately.
 func (sl *splunkLogger) flush() {
+	sl.flushMu.Lock()
+	defer sl.flushMu.Unlock()
+
 	sl.payloads <- []byte("")
 }
 
@@ -231,12 +235,15 @@ func (sl *splunkLogger) flush() {
 // Returns true if timeout was not reached and all payloads were sent, false if
 // the timeout was reached or if the logger was already closed.
 func (sl *splunkLogger) close(timeout time.Duration) bool {
+	sl.flushMu.Lock()
+	defer sl.flushMu.Unlock()
+
 	var result bool
-	
 	sl.closeOnce.Do(func() {
 		if !sl.active.Load() {
 			return
 		}
+
 		close(sl.payloads)
 
 		timeout := time.Now().Add(timeout)
