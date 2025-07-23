@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/lzap/cloudwatchwriter2"
@@ -267,19 +266,6 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 	})
 
 	return outerError
-}
-
-// Flush flushes all pending logs to the configured outputs. Blocks until all logs are written.
-func Flush() {
-	if handlerSplunk != nil {
-		handlerSplunk.Close()
-	}
-
-	if handlerCloudWatch != nil {
-		handlerCloudWatch.Close()
-	}
-
-	sentry.Flush(2 * time.Second)
 }
 
 // StdLogger returns a standard library legacy logger that writes to configured outputs.
