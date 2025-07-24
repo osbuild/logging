@@ -7,6 +7,13 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
+func Flush() {
+	defaultLogger.Load().Flush()
+}
+func Close(d time.Duration) {
+	defaultLogger.Load().Close(d)
+}
+
 // Flush flushes all pending logs to the configured outputs. Depending on the
 // logging configuration, it issues flush commands to various systems which
 // behave differently:
@@ -19,13 +26,13 @@ import (
 //
 // Do not use this function during application exit, use Close() instead to
 // ensure all logs are flushed properly.
-func Flush() {
-	if handlerSplunk != nil {
-		handlerSplunk.Flush()
+func (l *loggerState) Flush() {
+	if l.handlerSplunk != nil {
+		l.handlerSplunk.Flush()
 	}
 
-	if handlerCloudWatch != nil {
-		handlerCloudWatch.Flush()
+	if l.handlerCloudWatch != nil {
+		l.handlerCloudWatch.Flush()
 	}
 
 	sentry.Flush(2 * time.Second)
@@ -40,18 +47,18 @@ var onceClose sync.Once
 //
 // Returns true if timeout was not reached and all payloads were sent or if it
 // was already closed, false if the timeout was reached.
-func Close(timeout time.Duration) bool {
+func (l *loggerState) Close(timeout time.Duration) bool {
 	result := true
 
 	onceClose.Do(func() {
 		each := timeout / 3
 
-		if handlerSplunk != nil {
-			result = handlerSplunk.CloseWithTimeout(each) && result
+		if l.handlerSplunk != nil {
+			result = l.handlerSplunk.CloseWithTimeout(each) && result
 		}
 
-		if handlerCloudWatch != nil {
-			result = handlerCloudWatch.CloseWithTimeout(each) && result
+		if l.handlerCloudWatch != nil {
+			result = l.handlerCloudWatch.CloseWithTimeout(each) && result
 		}
 
 		result = sentry.Flush(each) && result
