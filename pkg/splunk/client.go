@@ -39,9 +39,11 @@ type splunkLogger struct {
 	source   string
 	hostname string
 
-	pool     sync.Pool
-	payloads chan []byte
-	active   atomic.Bool
+	pool      sync.Pool
+	payloads  chan []byte
+	active    atomic.Bool
+	closeOnce sync.Once
+	flushMu   sync.Mutex
 
 	payloadsChannelSize int
 	maximumSize         int
@@ -219,27 +221,44 @@ func (sl *splunkLogger) sendPayloads(buf *bytes.Buffer) error {
 // flush will cause the logger to flush the current buffer. It does not block, there is no
 // guarantee that the buffer will be flushed immediately.
 func (sl *splunkLogger) flush() {
+	sl.flushMu.Lock()
+	defer sl.flushMu.Unlock()
+
 	sl.payloads <- []byte("")
 }
 
-// close will flush the buffer, close the channel and wait until all payloads are sent,
-// not longer than 2 seconds. It is safe to call close multiple times. After close is called
-// the client will not accept any new events, all attemtps to send new events will return
-// ErrFullOrClosed.
-func (sl *splunkLogger) close() {
-	if !sl.active.Load() {
-		return
-	}
-	close(sl.payloads)
+var ErrCloseTimeout = errors.New("close timeout reached")
 
-	timeout := time.Now().Add(2 * time.Second)
-	for sl.active.Load() {
-		time.Sleep(10 * time.Millisecond)
+// close will flush the buffer, close the channel and wait until all payloads
+// are sent, not longer than 2 seconds. It is safe to call close multiple times.
+// After close is called the client will not accept any new events, all attemtps
+// to send new events will return ErrFullOrClosed.
+//
+// Returns ErrCloseTimeout if timeout was reached.
+func (sl *splunkLogger) close(timeout time.Duration) error {
+	sl.flushMu.Lock()
+	defer sl.flushMu.Unlock()
 
-		if time.Now().After(timeout) {
-			break
+	var result error
+	sl.closeOnce.Do(func() {
+		if !sl.active.Load() {
+			return
 		}
-	}
+
+		close(sl.payloads)
+
+		timeout := time.Now().Add(timeout)
+		for sl.active.Load() {
+			time.Sleep(10 * time.Millisecond)
+
+			if time.Now().After(timeout) {
+				result = ErrCloseTimeout
+				return
+			}
+		}
+	})
+
+	return result
 }
 
 // event will create a new event and send it to the payloads channel. It will return
