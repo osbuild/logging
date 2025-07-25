@@ -50,7 +50,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer sinit.Flush()
+	defer func() {
+		if err := sinit.Close(300 * time.Millisecond); err != nil {
+			slog.Error("failed to close logging", "error", err)
+		}
+	}()
 
 	span, ctx := strc.Start(context.Background(), "main")
 
