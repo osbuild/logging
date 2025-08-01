@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/lzap/cloudwatchwriter2"
@@ -145,159 +145,177 @@ type LogrusConfig struct {
 	ExitOnFatal bool
 }
 
-var initOnce sync.Once
-var handlerMulti *strc.MultiHandler
-var handlerSplunk *splunk.SplunkHandler
-var handlerCloudWatch *cloudwatchwriter2.Handler
+type resources struct {
+	handlerMulti      *strc.MultiHandler
+	handlerSplunk     *splunk.SplunkHandler
+	handlerCloudWatch *cloudwatchwriter2.Handler
+	sentryEnabled     bool
+	prevSlogger       *slog.Logger
+}
 
-// InitializeLogging initializes the logging system with the provided configuration. Use Flush to ensure all logs are written before exiting.
-// Subsequent calls to InitializeLogging will have no effect and will not return any error.
+var (
+	res   *resources
+	resMu sync.Mutex
+
+	ErrAlreadyInitialized   = errors.New("logging already initialized, call Close clean")
+	ErrInvalidURL           = errors.New("invalid URL")
+	ErrMissingURL           = errors.New("missing URL")
+	ErrSentryInitialization = errors.New("sentry initialization error")
+)
+
+// InitializeLogging initializes the logging system with the provided
+// configuration. Use Close to ensure all logs are written before exiting.
+// Subsequent calls to InitializeLogging will lead to ErrAlreadyInitialized.
 func InitializeLogging(ctx context.Context, config LoggingConfig) error {
-	var outerError error
+	resMu.Lock()
+	defer resMu.Unlock()
 
-	initOnce.Do(func() {
-		var handlers []slog.Handler
+	if res != nil {
+		return ErrAlreadyInitialized
+	}
+	res = &resources{}
 
-		if err := validate(config); err != nil {
-			outerError = fmt.Errorf("logging configuration validation error: %w", err)
-			return
-		}
+	var handlers []slog.Handler
 
-		if config.StdoutConfig.Enabled {
-			var h slog.Handler
-			opts := &slog.HandlerOptions{
-				Level: parseLevel(config.StdoutConfig.Level),
-			}
-			if strings.EqualFold(config.StdoutConfig.Format, "json") {
-				h = slog.NewJSONHandler(os.Stdout, opts)
-			} else {
-				h = slog.NewTextHandler(os.Stdout, opts)
-			}
-			handlers = append(handlers, h)
-		}
-
-		if config.JournalConfig.Enabled {
-			h, err := journal.NewHandler(&journal.Options{
-				Level: parseLevel(config.JournalConfig.Level),
-				ReplaceGroup: func(k string) string {
-					return strings.ReplaceAll(strings.ToUpper(k), "-", "_")
-				},
-				ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-					a.Key = strings.ReplaceAll(strings.ToUpper(a.Key), "-", "_")
-					return a
-				},
-			})
-			if err != nil {
-				outerError = fmt.Errorf("journal initialization error: %w", err)
-				return
-			}
-			handlers = append(handlers, h)
-		}
-
-		if config.SplunkConfig.Enabled {
-			c := splunk.SplunkConfig{
-				Level:    parseLevel(config.SplunkConfig.Level),
-				URL:      config.SplunkConfig.URL,
-				Token:    config.SplunkConfig.Token,
-				Source:   config.SplunkConfig.Source,
-				Hostname: config.SplunkConfig.Hostname,
-			}
-			handlerSplunk = splunk.NewSplunkHandler(ctx, c)
-			handlers = append(handlers, handlerSplunk)
-		}
-
-		if config.CloudWatchConfig.Enabled {
-			var err error
-			handlerCloudWatch, err = cloudwatchwriter2.NewHandler(cloudwatchwriter2.HandlerConfig{
-				Level:        parseLevel(config.CloudWatchConfig.Level),
-				AddSource:    true,
-				AWSRegion:    config.CloudWatchConfig.AWSRegion,
-				AWSKey:       config.CloudWatchConfig.AWSKey,
-				AWSSecret:    config.CloudWatchConfig.AWSSecret,
-				AWSSession:   config.CloudWatchConfig.AWSSession,
-				AWSLogGroup:  config.CloudWatchConfig.AWSLogGroup,
-				AWSLogStream: config.CloudWatchConfig.AWSLogStream,
-			})
-			if err != nil {
-				outerError = fmt.Errorf("cloudwatch initialization error: %w", err)
-				return
-			}
-			handlers = append(handlers, handlerCloudWatch)
-		}
-
-		if config.SentryConfig.Enabled {
-			err := sentry.Init(sentry.ClientOptions{
-				Dsn:           config.SentryConfig.DSN,
-				EnableTracing: false,
-			})
-			if err != nil {
-				outerError = fmt.Errorf("%w: %w", ErrSentryInitialization, err)
-				return
-			}
-
-			h := slogsentry.Option{
-				Level:     slog.LevelError,
-				AddSource: true,
-			}.NewSentryHandler()
-			handlers = append(handlers, h)
-		}
-
-		// create the combined handler
-		handlerMulti = strc.NewMultiHandlerCustom(
-			config.TracingConfig.CustomAttrs,
-			config.TracingConfig.ContextCallback,
-			handlers...,
-		)
-
-		// configure slog
-		logger := slog.New(handlerMulti)
-		slog.SetDefault(logger)
-
-		// configure tracing
-		if config.TracingConfig.Enabled {
-			strc.SetLogger(logger)
-		}
-
-		// configure logrus proxy
-		if config.LogrusConfig.Enabled {
-			logrus.SetDefault(logrus.NewProxyFor(logger, logrus.Options{
-				NoExit: !config.LogrusConfig.ExitOnFatal,
-			}))
-		}
-	})
-
-	return outerError
-}
-
-// Flush flushes all pending logs to the configured outputs. Blocks until all logs are written.
-func Flush() {
-	if handlerSplunk != nil {
-		handlerSplunk.Close()
+	if err := validate(config); err != nil {
+		return fmt.Errorf("logging configuration validation error: %w", err)
 	}
 
-	if handlerCloudWatch != nil {
-		handlerCloudWatch.Close()
+	if config.StdoutConfig.Enabled {
+		var h slog.Handler
+		opts := &slog.HandlerOptions{
+			Level: parseLevel(config.StdoutConfig.Level),
+		}
+		if strings.EqualFold(config.StdoutConfig.Format, "json") {
+			h = slog.NewJSONHandler(os.Stdout, opts)
+		} else {
+			h = slog.NewTextHandler(os.Stdout, opts)
+		}
+		handlers = append(handlers, h)
 	}
 
-	sentry.Flush(2 * time.Second)
+	if config.JournalConfig.Enabled {
+		h, err := journal.NewHandler(&journal.Options{
+			Level: parseLevel(config.JournalConfig.Level),
+			ReplaceGroup: func(k string) string {
+				return strings.ReplaceAll(strings.ToUpper(k), "-", "_")
+			},
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				a.Key = strings.ReplaceAll(strings.ToUpper(a.Key), "-", "_")
+				return a
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("journal initialization error: %w", err)
+
+		}
+		handlers = append(handlers, h)
+	}
+
+	if config.SplunkConfig.Enabled {
+		c := splunk.SplunkConfig{
+			Level:    parseLevel(config.SplunkConfig.Level),
+			URL:      config.SplunkConfig.URL,
+			Token:    config.SplunkConfig.Token,
+			Source:   config.SplunkConfig.Source,
+			Hostname: config.SplunkConfig.Hostname,
+		}
+		res.handlerSplunk = splunk.NewSplunkHandler(ctx, c)
+		handlers = append(handlers, res.handlerSplunk)
+	}
+
+	if config.CloudWatchConfig.Enabled {
+		var err error
+		res.handlerCloudWatch, err = cloudwatchwriter2.NewHandler(cloudwatchwriter2.HandlerConfig{
+			Level:        parseLevel(config.CloudWatchConfig.Level),
+			AddSource:    true,
+			AWSRegion:    config.CloudWatchConfig.AWSRegion,
+			AWSKey:       config.CloudWatchConfig.AWSKey,
+			AWSSecret:    config.CloudWatchConfig.AWSSecret,
+			AWSSession:   config.CloudWatchConfig.AWSSession,
+			AWSLogGroup:  config.CloudWatchConfig.AWSLogGroup,
+			AWSLogStream: config.CloudWatchConfig.AWSLogStream,
+		})
+		if err != nil {
+			return fmt.Errorf("cloudwatch initialization error: %w", err)
+
+		}
+		handlers = append(handlers, res.handlerCloudWatch)
+	}
+
+	if config.SentryConfig.Enabled {
+		res.sentryEnabled = true
+
+		err := sentry.Init(sentry.ClientOptions{
+			Dsn:           config.SentryConfig.DSN,
+			EnableTracing: false,
+		})
+		if err != nil {
+			return fmt.Errorf("%w: %w", ErrSentryInitialization, err)
+
+		}
+
+		h := slogsentry.Option{
+			Level:     slog.LevelError,
+			AddSource: true,
+		}.NewSentryHandler()
+		handlers = append(handlers, h)
+	}
+
+	// create the combined handler
+	res.handlerMulti = strc.NewMultiHandlerCustom(
+		config.TracingConfig.CustomAttrs,
+		config.TracingConfig.ContextCallback,
+		handlers...,
+	)
+
+	// configure slog
+	res.prevSlogger = slog.Default()
+	logger := slog.New(res.handlerMulti)
+	slog.SetDefault(logger)
+
+	// configure tracing
+	if config.TracingConfig.Enabled {
+		strc.SetLogger(logger)
+	}
+
+	// configure logrus proxy
+	if config.LogrusConfig.Enabled {
+		logrus.SetDefault(logrus.NewProxyFor(logger, logrus.Options{
+			NoExit: !config.LogrusConfig.ExitOnFatal,
+		}))
+	}
+
+	return nil
 }
 
-// StdLogger returns a standard library legacy logger that writes to configured outputs.
-// This is only useful for passing to libraries that require a legacy Go standard logger.
+// StdLogger returns a standard library legacy logger that writes to configured
+// outputs. This is only useful for passing to libraries that require a legacy
+// Go standard logger.
+//
+// If logging was not initialized, it returns a logger that writes to
+// io.Discard.
 func StdLogger() *log.Logger {
+	resMu.Lock()
+	defer resMu.Unlock()
+
+	if res == nil {
+		return slog.NewLogLogger(slog.NewJSONHandler(io.Discard, nil), slog.LevelDebug)
+	}
+
 	// write via debug level, handlers will filter out messages below their level
-	return slog.NewLogLogger(handlerMulti, slog.LevelDebug)
+	return slog.NewLogLogger(res.handlerMulti, slog.LevelDebug)
 }
-
-var ErrInvalidURL = errors.New("invalid URL")
-
-var ErrSentryInitialization = errors.New("sentry initialization error")
 
 func validate(config LoggingConfig) error {
 	if config.SplunkConfig.Enabled {
+		if config.SplunkConfig.URL == "" {
+			return fmt.Errorf("%w: splunk URL is required", ErrMissingURL)
+		}
+
 		_, err := url.Parse(config.SplunkConfig.URL)
 		if err != nil {
-			return fmt.Errorf("splunk URL '%s' is invalid: %w", config.SplunkConfig.URL, ErrInvalidURL)
+			return fmt.Errorf("%w: '%s': %w", ErrInvalidURL, config.SplunkConfig.URL, err)
 		}
 	}
 

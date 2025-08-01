@@ -73,10 +73,21 @@ func (h *SplunkHandler) Flush() {
 	h.splunk.flush()
 }
 
-// Close flushes all pending payloads and closes the Splunk client. Sending new logs after
-// closing the handler will return ErrFullOrClosed. The call can block but not longer than 2 seconds.
+// Close flushes all pending payloads and closes the Splunk client. Sending new
+// logs after closing the handler will return ErrFullOrClosed. The call can
+// block but not longer than 2 seconds. Use CloseWithTimeout to specify a custom
+// timeout.
 func (h *SplunkHandler) Close() {
-	h.splunk.close()
+	h.splunk.close(2 * time.Second)
+}
+
+// CloseWithTimeout flushes all pending payloads and closes the Splunk client.
+// Sending new logs after closing the handler will return ErrFullOrClosed. The
+// call can block but not longer than the specified timeout.
+//
+// Returns ErrCloseTimeout if the timeout was reached.
+func (h *SplunkHandler) CloseWithTimeout(timeout time.Duration) error {
+	return h.splunk.close(timeout)
 }
 
 // Write is called by the JSON handler to write the JSON payload to the Splunk client.

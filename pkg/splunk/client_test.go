@@ -7,8 +7,11 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func decodeBody(t *testing.T, r *http.Request) map[string]any {
@@ -61,7 +64,7 @@ func TestSplunkLoggerRetry(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sl.close()
+	sl.close(100 * time.Millisecond)
 
 	if !<-ch {
 		t.Error("timeout")
@@ -105,7 +108,7 @@ func TestSplunkLoggerContext(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sl.close()
+	sl.close(100 * time.Millisecond)
 
 	if !<-ch {
 		t.Error("timeout")
@@ -124,7 +127,7 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 			name: "empty",
 			f: func() error {
 				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0)
-				defer sl.close()
+				defer sl.close(100 * time.Millisecond)
 				_, err := sl.event([]byte("{}\n"))
 				if err != nil {
 					return err
@@ -145,7 +148,7 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 			name: "json",
 			f: func() error {
 				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0)
-				defer sl.close()
+				defer sl.close(100 * time.Millisecond)
 				_, err := sl.event([]byte(`{"a": "b"}` + "\n"))
 				if err != nil {
 					return err
@@ -189,4 +192,40 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSplunkLoggerCloseTimeout(t *testing.T) {
+	stopCh := make(chan struct{})
+
+	var handlerCalls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalls.Add(1)
+		select {
+		case <-time.After(10 * time.Second):
+			return
+		case <-stopCh:
+			return
+		}
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel()
+
+	sl := newSplunkLogger(ctx, srv.URL, "token", "source", "hostname", 0)
+	_, err := sl.event([]byte("{}\n"))
+	if err != nil {
+		t.Error(err)
+	}
+	start := time.Now()
+	closeTimeout := 100 * time.Millisecond
+
+	err = sl.close(closeTimeout)
+	assert.Equal(t, ErrCloseTimeout, err)
+
+	// add a lot of slack to the closeTimeout to account for slow  GH VMs that may run the tests
+	assert.True(t, time.Since(start) < 5*closeTimeout)
+
+	close(stopCh)
+	assert.Equal(t, int32(1), handlerCalls.Load())
 }
