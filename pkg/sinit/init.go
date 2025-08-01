@@ -150,6 +150,10 @@ var handlerMulti *strc.MultiHandler
 var handlerSplunk *splunk.SplunkHandler
 var handlerCloudWatch *cloudwatchwriter2.Handler
 
+var hostnameFunc = func() (name string, err error) {
+	return os.Hostname()
+}
+
 // InitializeLogging initializes the logging system with the provided configuration. Use Flush to ensure all logs are written before exiting.
 // Subsequent calls to InitializeLogging will have no effect and will not return any error.
 func InitializeLogging(ctx context.Context, config LoggingConfig) error {
@@ -195,6 +199,16 @@ func InitializeLogging(ctx context.Context, config LoggingConfig) error {
 		}
 
 		if config.SplunkConfig.Enabled {
+			if config.SplunkConfig.Hostname == "" {
+				hostname, err := hostnameFunc()
+				if err != nil {
+					outerError = fmt.Errorf("failed to get hostname: %w", err)
+					return
+				}
+
+				config.SplunkConfig.Hostname = hostname
+			}
+
 			c := splunk.SplunkConfig{
 				Level:    parseLevel(config.SplunkConfig.Level),
 				URL:      config.SplunkConfig.URL,
