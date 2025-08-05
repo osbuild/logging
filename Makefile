@@ -19,7 +19,7 @@ clean: ## clean all build and test artifacts
 
 .PHONY: unit-tests
 unit-tests: coverage_data_unittests ## Run all tests with coverage
-	go test -race -v -covermode=atomic ./... -args -test.gocoverdir="$(shell pwd)/coverage_data_unittests"
+	go test -race -covermode=atomic ./... -args -test.gocoverdir="$(shell pwd)/coverage_data_unittests"
 
 .PHONY: test
 test: ## Run tests without coverage
