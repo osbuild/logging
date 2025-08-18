@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/osbuild/logging/pkg/collect"
@@ -283,5 +284,89 @@ func TestMiddlewareSkipsTraceHeader(t *testing.T) {
 	middleware(handler).ServeHTTP(rec, req)
 	if rec.Header().Get(strc.TraceHTTPHeaderName) != "" {
 		t.Errorf("expected trace header to be empty")
+	}
+}
+
+func TestMiddlewareAttributes(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   strc.MiddlewareConfig
+		expected []string
+	}{
+		{
+			name:   "default",
+			config: strc.MiddlewareConfig{},
+			expected: []string{
+				`msg="200: OK"`,
+				`level=INFO`,
+				`request.length=12`,  // "test request" = 12 runes
+				`response.length=13`, // "test response" = 13 runes
+			},
+		},
+		{
+			name:   "with user agent",
+			config: strc.MiddlewareConfig{WithUserAgent: true},
+			expected: []string{
+				`request.user-agent=`,
+			},
+		},
+		{
+			name:   "with request body",
+			config: strc.MiddlewareConfig{WithRequestBody: true},
+			expected: []string{
+				`request.body="test request"`,
+				`request.length=12`,
+			},
+		},
+		{
+			name:   "with response body",
+			config: strc.MiddlewareConfig{WithResponseBody: true},
+			expected: []string{
+				`response.body="test response"`,
+				`response.length=13`,
+			},
+		},
+		{
+			name:   "with request header",
+			config: strc.MiddlewareConfig{WithRequestHeader: true},
+			expected: []string{
+				`request.host=example.com`,
+				`request.method=POST`,
+				`request.path=/`,
+			},
+		},
+		{
+			name:   "with response headers",
+			config: strc.MiddlewareConfig{WithResponseHeader: true},
+			expected: []string{
+				`response.status=200`,
+				`response.latency=`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sb := strings.Builder{}
+			logger := slog.New(slog.NewTextHandler(&sb, &slog.HandlerOptions{}))
+			middleware := strc.NewMiddlewareWithConfig(logger, tt.config)
+			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				io.ReadAll(r.Body)
+
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("test response"))
+			})
+
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/", strings.NewReader("test request"))
+			middleware(handler).ServeHTTP(rec, req)
+
+			for _, line := range tt.expected {
+				if !strings.Contains(sb.String(), line) {
+					t.Log(sb.String())
+					t.Errorf("expected log message to contain '%s'", line)
+				}
+			}
+		})
 	}
 }
