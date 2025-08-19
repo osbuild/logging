@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"reflect"
@@ -273,5 +274,23 @@ func TestLogrusProxy(t *testing.T) {
 				t.Errorf("unexpected result: %v expected: %v", result, tt.result)
 			}
 		})
+	}
+}
+
+func TestContext(t *testing.T) {
+	ch := collect.NewTestHandler(slog.LevelDebug, false, false, false)
+	logger := slog.New(ch)
+	ctx := context.Background()
+	ctx = collect.WithTestID(ctx, "test")
+	p := NewProxyWithContextFor(logger, ctx)
+	old := slog.Default()
+	slog.SetDefault(logger)
+	defer slog.SetDefault(old)
+
+	p.Debug("message")
+
+	result := ch.Last()
+	if result["test_id"] != "test" {
+		t.Errorf("context does not pass test_id: %v", result["test_id"])
 	}
 }

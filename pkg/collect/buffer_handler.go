@@ -63,6 +63,10 @@ func (h *CollectorHandler) add(m map[string]any) {
 func (h *CollectorHandler) Handle(ctx context.Context, r slog.Record) error {
 	m := make(map[string]any)
 
+	if TestID(ctx) != "" {
+		m["test_id"] = TestID(ctx)
+	}
+
 	m[slog.MessageKey] = r.Message
 
 	if h.addLevel {
