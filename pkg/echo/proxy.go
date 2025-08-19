@@ -13,15 +13,22 @@ import (
 // Proxy is a proxy type for logrus.Logger
 type Proxy struct {
 	dest *slog.Logger
+	ctx  context.Context
 }
 
 var proxy *Proxy
 
-// NewProxyFor creates a new Proxy for a particular logger
-func NewProxyFor(logger *slog.Logger) *Proxy {
+// NewProxyWithContextFor creates a new Proxy for a particular logger with a particular context.
+func NewProxyWithContextFor(logger *slog.Logger, ctx context.Context) *Proxy {
 	return &Proxy{
 		dest: logger.With(slog.Bool("echo", true)),
+		ctx:  ctx,
 	}
+}
+
+// NewProxyFor creates a new Proxy for a particular logger
+func NewProxyFor(logger *slog.Logger) *Proxy {
+	return NewProxyWithContextFor(logger, context.Background())
 }
 
 // NewProxy creates a new Proxy for the standard logger
@@ -40,7 +47,7 @@ func Default() *Proxy {
 var _ = Logger(&Proxy{})
 
 func (p *Proxy) Write(b []byte) (int, error) {
-	p.dest.Info(string(b))
+	p.dest.InfoContext(p.ctx, string(b))
 	return len(b), nil
 }
 
@@ -61,20 +68,19 @@ func (p *Proxy) SetPrefix(prefix string) {
 }
 
 func (p *Proxy) Level() log.Lvl {
-	ctx := context.Background()
-	if p.dest.Enabled(ctx, slog.LevelDebug) {
+	if p.dest.Enabled(p.ctx, slog.LevelDebug) {
 		return log.DEBUG
 	}
 
-	if p.dest.Enabled(ctx, slog.LevelInfo) {
+	if p.dest.Enabled(p.ctx, slog.LevelInfo) {
 		return log.INFO
 	}
 
-	if p.dest.Enabled(ctx, slog.LevelWarn) {
+	if p.dest.Enabled(p.ctx, slog.LevelWarn) {
 		return log.WARN
 	}
 
-	if p.dest.Enabled(ctx, slog.LevelError) {
+	if p.dest.Enabled(p.ctx, slog.LevelError) {
 		return log.ERROR
 	}
 
@@ -98,11 +104,11 @@ func anyToString(a []any) []string {
 }
 
 func (p *Proxy) Print(args ...interface{}) {
-	p.dest.Info(strings.Join(anyToString(args), " "))
+	p.dest.InfoContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Printf(format string, args ...interface{}) {
-	p.dest.Info(fmt.Sprintf(format, args...))
+	p.dest.InfoContext(p.ctx, fmt.Sprintf(format, args...))
 }
 
 func (p *Proxy) Printj(j log.JSON) {
@@ -115,15 +121,15 @@ func (p *Proxy) Printj(j log.JSON) {
 		}
 		args = append(args, slog.Any(k, v))
 	}
-	p.dest.LogAttrs(context.Background(), slog.LevelInfo, msg, args...)
+	p.dest.LogAttrs(p.ctx, slog.LevelInfo, msg, args...)
 }
 
 func (p *Proxy) Debug(args ...interface{}) {
-	p.dest.Debug(strings.Join(anyToString(args), " "))
+	p.dest.DebugContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Debugf(format string, args ...interface{}) {
-	p.dest.Debug(fmt.Sprintf(format, args...))
+	p.dest.DebugContext(p.ctx, fmt.Sprintf(format, args...))
 }
 
 func (p *Proxy) Debugj(j log.JSON) {
@@ -136,15 +142,15 @@ func (p *Proxy) Debugj(j log.JSON) {
 		}
 		args = append(args, slog.Any(k, v))
 	}
-	p.dest.LogAttrs(context.Background(), slog.LevelDebug, msg, args...)
+	p.dest.LogAttrs(p.ctx, slog.LevelDebug, msg, args...)
 }
 
 func (p *Proxy) Info(args ...interface{}) {
-	p.dest.Info(strings.Join(anyToString(args), " "))
+	p.dest.InfoContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Infof(format string, args ...interface{}) {
-	p.dest.Info(fmt.Sprintf(format, args...))
+	p.dest.InfoContext(p.ctx, fmt.Sprintf(format, args...))
 }
 
 func (p *Proxy) Infoj(j log.JSON) {
@@ -157,15 +163,15 @@ func (p *Proxy) Infoj(j log.JSON) {
 		}
 		args = append(args, slog.Any(k, v))
 	}
-	p.dest.LogAttrs(context.Background(), slog.LevelInfo, msg, args...)
+	p.dest.LogAttrs(p.ctx, slog.LevelInfo, msg, args...)
 }
 
 func (p *Proxy) Warn(args ...interface{}) {
-	p.dest.Warn(strings.Join(anyToString(args), " "))
+	p.dest.WarnContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Warnf(format string, args ...interface{}) {
-	p.dest.Warn(fmt.Sprintf(format, args...))
+	p.dest.WarnContext(p.ctx, fmt.Sprintf(format, args...))
 }
 
 func (p *Proxy) Warnj(j log.JSON) {
@@ -178,15 +184,15 @@ func (p *Proxy) Warnj(j log.JSON) {
 		}
 		args = append(args, slog.Any(k, v))
 	}
-	p.dest.LogAttrs(context.Background(), slog.LevelWarn, msg, args...)
+	p.dest.LogAttrs(p.ctx, slog.LevelWarn, msg, args...)
 }
 
 func (p *Proxy) Error(args ...interface{}) {
-	p.dest.Error(strings.Join(anyToString(args), " "))
+	p.dest.ErrorContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Errorf(format string, args ...interface{}) {
-	p.dest.Error(fmt.Sprintf(format, args...))
+	p.dest.ErrorContext(p.ctx, fmt.Sprintf(format, args...))
 }
 
 func (p *Proxy) Errorj(j log.JSON) {
@@ -199,15 +205,15 @@ func (p *Proxy) Errorj(j log.JSON) {
 		}
 		args = append(args, slog.Any(k, v))
 	}
-	p.dest.LogAttrs(context.Background(), slog.LevelError, msg, args...)
+	p.dest.LogAttrs(p.ctx, slog.LevelError, msg, args...)
 }
 
 func (p *Proxy) Fatal(args ...interface{}) {
-	p.dest.Error(strings.Join(anyToString(args), " "))
+	p.dest.ErrorContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Fatalf(format string, args ...interface{}) {
-	p.dest.Error(fmt.Sprintf(format, args...))
+	p.dest.ErrorContext(p.ctx, fmt.Sprintf(format, args...))
 }
 
 func (p *Proxy) Fatalj(j log.JSON) {
@@ -220,15 +226,15 @@ func (p *Proxy) Fatalj(j log.JSON) {
 		}
 		args = append(args, slog.Any(k, v))
 	}
-	p.dest.LogAttrs(context.Background(), slog.LevelError, msg, args...)
+	p.dest.LogAttrs(p.ctx, slog.LevelError, msg, args...)
 }
 
 func (p *Proxy) Panic(args ...interface{}) {
-	p.dest.Error(strings.Join(anyToString(args), " "))
+	p.dest.ErrorContext(p.ctx, strings.Join(anyToString(args), " "))
 }
 
 func (p *Proxy) Panicf(format string, args ...interface{}) {
-	p.dest.Error(fmt.Sprintf(format, args...))
+	p.dest.ErrorContext(p.ctx, fmt.Sprintf(format, args...))
 }
 
 func (p *Proxy) Panicj(j log.JSON) {
@@ -241,5 +247,5 @@ func (p *Proxy) Panicj(j log.JSON) {
 		}
 		args = append(args, slog.Any(k, v))
 	}
-	p.dest.LogAttrs(context.Background(), slog.LevelError, msg, args...)
+	p.dest.LogAttrs(p.ctx, slog.LevelError, msg, args...)
 }

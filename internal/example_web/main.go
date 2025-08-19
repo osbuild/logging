@@ -49,6 +49,12 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 	s1.Logger = echoproxy.NewProxyFor(logger)
 	s1.Use(echo.WrapMiddleware(m1))
 	s1.Use(echo.WrapMiddleware(m3))
+	s1.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.SetLogger(echoproxy.NewProxyWithContextFor(logger, c.Request().Context()))
+			return next(c)
+		}
+	})
 	s1.GET("/", func(c echo.Context) error {
 		span, ctx := strc.Start(c.Request().Context(), "s1")
 		defer span.End()
