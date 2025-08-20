@@ -78,11 +78,12 @@ mux.Handle("/", middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.
 The library does not provide native Echo middleware, but a standard middleware can be easily used from Echo:
 
 ```go
-middleware := strc.NewMiddleware(logger)
-e.Use(echo.WrapMiddleware(middleware))
+e.Use(strc.NewEchoV4MiddlewareWithConfig(logger, strc.MiddlewareConfig{}))
 ```
 
-The `strc.Middeware` can be optionally configured to log detailed debug information like request or reply HTTP headers or even full body. This is turned off by default, see `strc.MiddlewareConfig` for more info.
+Note: Do not use `echo.WrapMiddleware` as it ignores errors which echo middleware and handlers may return.
+
+See `strc.MiddlewareConfig` for more info about configuration.
 
 ### HTTP client
 

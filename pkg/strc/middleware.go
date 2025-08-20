@@ -110,150 +110,196 @@ func NewMiddlewareWithFilters(logger *slog.Logger, filters ...Filter) func(http.
 func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			path := r.URL.Path
-			method := r.Method
-			host := r.Host
-			userAgent := r.UserAgent()
-			ip := r.RemoteAddr
-
-			// dump request body
-			br := newBodyReader(r.Body, RequestBodyMaxSize, config.WithRequestBody)
-			r.Body = br
-
-			// dump response body
-			bw := newBodyWriter(w, ResponseBodyMaxSize, config.WithResponseBody)
-
-			// apply filters early
-			for _, filter := range config.Filters {
-				if !filter(bw, r) {
-					next.ServeHTTP(bw, r)
-					return
-				}
+			m := middleware{
+				logger: logger,
+				config: config,
+				w:      w,
+				r:      r,
+				callFunc: func(w http.ResponseWriter, r *http.Request) {
+					next.ServeHTTP(w, r)
+				},
 			}
 
-			// trace id
-			ctx := r.Context()
-			var returnTraceID bool
-			traceID := TraceIDFromRequest(r)
-			if traceID == EmptyTraceID {
-				traceID = NewTraceID()
-				returnTraceID = true
-			}
+			m.before()
+			defer m.after()
 
-			// span id
-			spanID := SpanIDFromRequest(r)
-
-			if !config.NoTraceContext {
-				ctx = WithTraceID(ctx, traceID)
-				ctx = WithSpanID(ctx, spanID)
-				r = r.WithContext(ctx)
-			}
-
-			defer func() {
-				status := bw.Status()
-				end := time.Now()
-				latency := end.Sub(start)
-
-				// add trace id to response header
-				if returnTraceID && !config.NoTraceContext {
-					w.Header().Add(TraceHTTPHeaderName, traceID.String())
-				}
-
-				// build attributes
-				baseAttributes := []slog.Attr{}
-
-				if config.WithTraceID && !config.NoTraceContext {
-					baseAttributes = append(baseAttributes, slog.String(TraceIDKey, traceID.String()))
-				}
-
-				if config.WithSpanID && !config.NoTraceContext {
-					baseAttributes = append(baseAttributes, slog.String(SpanIDKey, spanID.String()))
-				}
-
-				requestAttributes := []slog.Attr{
-					slog.Time("time", start.UTC()),
-					slog.String("method", method),
-					slog.String("host", host),
-					slog.String("path", path),
-					slog.String("ip", ip),
-				}
-
-				responseAttributes := []slog.Attr{
-					slog.Time("time", end.UTC()),
-					slog.Duration("latency", latency),
-					slog.Int("status", status),
-				}
-
-				// request body
-				requestAttributes = append(requestAttributes, slog.Int("length", br.bytes))
-				if config.WithRequestBody {
-					requestAttributes = append(requestAttributes, slog.String("body", br.body.String()))
-				}
-
-				// request headers
-				if config.WithRequestHeader {
-					kv := []any{}
-
-					for k, v := range r.Header {
-						if _, found := HiddenRequestHeaders[strings.ToLower(k)]; found {
-							continue
-						}
-						kv = append(kv, slog.Any(k, v))
-					}
-
-					requestAttributes = append(requestAttributes, slog.Group("header", kv...))
-				}
-
-				if config.WithUserAgent {
-					requestAttributes = append(requestAttributes, slog.String("user-agent", userAgent))
-				}
-
-				// response body
-				responseAttributes = append(responseAttributes, slog.Int("length", bw.bytes))
-				if config.WithResponseBody {
-					responseAttributes = append(responseAttributes, slog.String("body", bw.body.String()))
-				}
-
-				// response headers
-				if config.WithResponseHeader {
-					kv := []any{}
-
-					for k, v := range w.Header() {
-						if _, found := HiddenResponseHeaders[strings.ToLower(k)]; found {
-							continue
-						}
-						kv = append(kv, slog.Any(k, v))
-					}
-
-					responseAttributes = append(responseAttributes, slog.Group("header", kv...))
-				}
-
-				attributes := append(
-					[]slog.Attr{
-						{
-							Key:   "request",
-							Value: slog.GroupValue(requestAttributes...),
-						},
-						{
-							Key:   "response",
-							Value: slog.GroupValue(responseAttributes...),
-						},
-					},
-					baseAttributes...,
-				)
-
-				level := config.DefaultLevel
-				if status >= http.StatusInternalServerError {
-					level = config.ServerErrorLevel
-				} else if status >= http.StatusBadRequest && status < http.StatusInternalServerError {
-					level = config.ClientErrorLevel
-				}
-
-				logger.LogAttrs(r.Context(), level, strconv.Itoa(status)+": "+http.StatusText(status), attributes...)
-			}()
-
-			next.ServeHTTP(bw, r)
+			next.ServeHTTP(m.bw, m.r)
 		})
 	}
+}
+
+type middleware struct {
+	logger *slog.Logger
+	config MiddlewareConfig
+	w      http.ResponseWriter
+	r      *http.Request
+	bw     *bodyWriter
+	br     *bodyReader
+
+	callFunc func(w http.ResponseWriter, r *http.Request)
+
+	start         time.Time
+	path          string
+	method        string
+	host          string
+	userAgent     string
+	ip            string
+	returnTraceID bool
+	traceID       TraceID
+	spanID        SpanID
+
+	status   int
+	internal error
+	message  any
+}
+
+func (m *middleware) before() {
+	m.start = time.Now()
+	m.path = m.r.URL.Path
+	m.method = m.r.Method
+	m.host = m.r.Host
+	m.userAgent = m.r.UserAgent()
+	m.ip = m.r.RemoteAddr
+
+	// dump request body
+	m.br = newBodyReader(m.r.Body, RequestBodyMaxSize, m.config.WithRequestBody)
+	m.r.Body = m.br
+
+	// dump response body
+	m.bw = newBodyWriter(m.w, ResponseBodyMaxSize, m.config.WithResponseBody)
+
+	// apply filters early
+	for _, filter := range m.config.Filters {
+		if !filter(m.bw, m.r) {
+			m.callFunc(m.bw, m.r)
+			return
+		}
+	}
+
+	// trace id
+	ctx := m.r.Context()
+	m.traceID = TraceIDFromRequest(m.r)
+	if m.traceID == EmptyTraceID {
+		m.traceID = NewTraceID()
+		m.returnTraceID = true
+	}
+
+	// span id
+	m.spanID = SpanIDFromRequest(m.r)
+
+	if !m.config.NoTraceContext {
+		ctx = WithTraceID(ctx, m.traceID)
+		ctx = WithSpanID(ctx, m.spanID)
+		m.r = m.r.WithContext(ctx)
+	}
+}
+
+func (m *middleware) after() {
+	errorSet := true
+	if m.status == 0 {
+		m.status = m.bw.Status()
+		errorSet = false
+	}
+	end := time.Now()
+	latency := end.Sub(m.start)
+
+	// add trace id to response header
+	if m.returnTraceID && !m.config.NoTraceContext {
+		m.w.Header().Add(TraceHTTPHeaderName, m.traceID.String())
+	}
+
+	// build attributes
+	baseAttributes := []slog.Attr{}
+
+	if m.config.WithTraceID && !m.config.NoTraceContext {
+		baseAttributes = append(baseAttributes, slog.String(TraceIDKey, m.traceID.String()))
+	}
+
+	if m.config.WithSpanID && !m.config.NoTraceContext {
+		baseAttributes = append(baseAttributes, slog.String(SpanIDKey, m.spanID.String()))
+	}
+
+	requestAttributes := []slog.Attr{
+		slog.Time("time", m.start.UTC()),
+		slog.String("method", m.method),
+		slog.String("host", m.host),
+		slog.String("path", m.path),
+		slog.String("ip", m.ip),
+	}
+
+	responseAttributes := []slog.Attr{
+		slog.Time("time", end.UTC()),
+		slog.Duration("latency", latency),
+		slog.Int("status", m.status),
+	}
+
+	// request body
+	requestAttributes = append(requestAttributes, slog.Int("length", m.br.bytes))
+	if m.config.WithRequestBody {
+		requestAttributes = append(requestAttributes, slog.String("body", m.br.body.String()))
+	}
+
+	// request headers
+	if m.config.WithRequestHeader {
+		kv := []any{}
+
+		for k, v := range m.r.Header {
+			if _, found := HiddenRequestHeaders[strings.ToLower(k)]; found {
+				continue
+			}
+			kv = append(kv, slog.Any(k, v))
+		}
+
+		requestAttributes = append(requestAttributes, slog.Group("header", kv...))
+	}
+
+	if m.config.WithUserAgent {
+		requestAttributes = append(requestAttributes, slog.String("user-agent", m.userAgent))
+	}
+
+	// response body
+	if !errorSet {
+		// only append length if status was not set externally (e.g. via echo error)
+		responseAttributes = append(responseAttributes, slog.Int("length", m.bw.bytes))
+		if m.config.WithResponseBody {
+			responseAttributes = append(responseAttributes, slog.String("body", m.bw.body.String()))
+		}
+	}
+
+	// response headers
+	if m.config.WithResponseHeader {
+		kv := []any{}
+
+		for k, v := range m.w.Header() {
+			if _, found := HiddenResponseHeaders[strings.ToLower(k)]; found {
+				continue
+			}
+			kv = append(kv, slog.Any(k, v))
+		}
+
+		responseAttributes = append(responseAttributes, slog.Group("header", kv...))
+	}
+
+	attributes := append(
+		[]slog.Attr{
+			{
+				Key:   "request",
+				Value: slog.GroupValue(requestAttributes...),
+			},
+			{
+				Key:   "response",
+				Value: slog.GroupValue(responseAttributes...),
+			},
+		},
+		baseAttributes...,
+	)
+
+	level := m.config.DefaultLevel
+	if m.status >= http.StatusInternalServerError {
+		level = m.config.ServerErrorLevel
+	} else if m.status >= http.StatusBadRequest && m.status < http.StatusInternalServerError {
+		level = m.config.ClientErrorLevel
+	}
+
+	m.logger.LogAttrs(m.r.Context(), level, strconv.Itoa(m.status)+": "+http.StatusText(m.status), attributes...)
 }

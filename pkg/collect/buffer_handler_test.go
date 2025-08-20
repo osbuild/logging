@@ -78,3 +78,46 @@ func TestLast(t *testing.T) {
 		}
 	}
 }
+
+func TestContains(t *testing.T) {
+	h := collect.NewTestHandler(slog.LevelDebug, false, false, true)
+	logger := slog.New(h)
+
+	logger.Info("test message", "key1", "value1", "group1", slog.GroupValue(slog.String("key2", "value2")))
+
+	if !h.Contains("test message", slog.MessageKey) {
+		t.Errorf("Expected to find msg with value test message")
+	}
+
+	if !h.Contains("INFO", slog.LevelKey) {
+		t.Errorf("Expected to find level with value INFO")
+	}
+
+	if !h.Contains("value1", "key1") {
+		t.Errorf("Expected to find key1 with value value1")
+	}
+
+	if !h.Contains("value2", "group1", "key2") {
+		t.Errorf("Expected to find group1.key2 with value value2")
+	}
+
+	if h.Contains("nonexistent", "key1") {
+		t.Errorf("Did not expect to find key1 with value nonexistent")
+	}
+
+	if h.Contains("value1", "nonexistent") {
+		t.Errorf("Did not expect to find nonexistent key")
+	}
+}
+
+func TestContainsPanic(t *testing.T) {
+	h := collect.NewTestHandler(slog.LevelDebug, false, false, true)
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("Expected panic, got none")
+		}
+	}()
+
+	h.Contains("test message")
+}

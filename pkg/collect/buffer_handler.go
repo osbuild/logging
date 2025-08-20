@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"runtime"
 	"sort"
 	"sync"
@@ -219,4 +220,45 @@ func (h *CollectorHandler) Reset() {
 	defer h.data.mu.Unlock()
 
 	h.data.fields = make([]map[string]any, 0)
+}
+
+// Contains searches through all collected logs for expected value. It supports nested
+// maps of fields (slog groups), and returns true if the value matches expected value.
+// Native slog fields like message, time or level are also supported.
+//
+// Example: a record created with logger.WithGroup("g").Debug("test", "key", "value") will
+// be a match for call Contains("value", "g", "key").
+func (h *CollectorHandler) Contains(expected any, names ...string) bool {
+	h.data.mu.RLock()
+	defer h.data.mu.RUnlock()
+
+	if len(names) == 0 {
+		panic("at least one name must be provided")
+	}
+
+	for _, record := range h.data.fields {
+		value, found := h.findNested(record, names)
+		if found && reflect.DeepEqual(value, expected) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (h *CollectorHandler) findNested(data map[string]any, names []string) (any, bool) {
+	current, ok := data[names[0]]
+	if !ok {
+		return nil, false
+	}
+
+	if len(names) == 1 {
+		return current, true
+	}
+
+	if nextData, ok := current.(map[string]any); ok {
+		return h.findNested(nextData, names[1:])
+	}
+
+	return nil, false
 }
