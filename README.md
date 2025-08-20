@@ -61,8 +61,7 @@ echo.Infoj("use infoj method instead", map[string]any{"msg": "test"})
 The library provides trace correlation from HTTP headers, middleware can be used both with plain HTTP handlers or echo library:
 
 ```go
-middleware := strc.NewMiddleware(logger)
-e.Use(echo.WrapMiddleware(middleware))
+e.Use(strc.NewEchoV4MiddlewareWithConfig(logger, strc.MiddlewareConfig{}))
 ```
 
 Trace correlation information can be easily passed into other services using a simple HTTP decorator:

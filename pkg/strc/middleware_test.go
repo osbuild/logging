@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"slices"
 	"strings"
 	"testing"
 
@@ -93,10 +92,8 @@ func TestMiddlewareCustomLogging(t *testing.T) {
 	req.Header.Add("X-Strc-Span-Id", "VIPEcES.yuufaHI")
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
-	if !slices.ContainsFunc(logHandler.All(), func(e map[string]any) bool {
-		return e["msg"] == "Test log"
-	}) {
-		t.Error("Log message not found")
+	if !logHandler.Contains("Test log", slog.MessageKey) {
+		t.Errorf("Message not found: %s", logHandler.All())
 	}
 }
 
@@ -113,21 +110,75 @@ func TestMiddlewareLogging(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://example.com/x", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
-	if !slices.ContainsFunc(logHandler.All(), func(e map[string]any) bool {
-		if e["msg"] != "200: OK" {
-			return false
-		}
-		if r, ok := e["request"]; ok {
-			r := r.(map[string]any)
-			return r["method"] == "GET" && r["path"] == "/x" && r["host"] == "example.com" && r["length"] == int64(0)
-		}
-		if r, ok := e["response"]; !ok {
-			r := r.(map[string]any)
-			return r["status"] == 200 && r["length"] == int64(0)
-		}
-		return true
-	}) {
-		t.Error("Log message not found")
+	if !logHandler.Contains("200: OK", slog.MessageKey) {
+		t.Errorf("Message not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("GET", "request", "method") {
+		t.Errorf("Request method not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("/x", "request", "path") {
+		t.Errorf("Request path not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("example.com", "request", "host") {
+		t.Errorf("Request host not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains(int64(0), "request", "length") {
+		t.Errorf("Request length not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains(int64(200), "response", "status") {
+		t.Errorf("Response status not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains(int64(0), "response", "length") {
+		t.Errorf("Response length not found: %s", logHandler.All())
+	}
+}
+
+func TestMiddlewareErrorLogging(t *testing.T) {
+	logHandler := collect.NewTestHandler(slog.LevelDebug, false, false, false)
+	logger := slog.New(logHandler)
+
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "test error", http.StatusInternalServerError)
+	})
+
+	middleware := strc.NewMiddlewareWithConfig(logger, strc.MiddlewareConfig{})
+	handlerToTest := middleware(nextHandler)
+
+	req := httptest.NewRequest("GET", "http://example.com/x", nil)
+	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
+
+	if !logHandler.Contains("500: Internal Server Error", slog.MessageKey) {
+		t.Errorf("Message not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("GET", "request", "method") {
+		t.Errorf("Request method not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("/x", "request", "path") {
+		t.Errorf("Request path not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("example.com", "request", "host") {
+		t.Errorf("Request host not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains(int64(0), "request", "length") {
+		t.Errorf("Request length not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains(int64(500), "response", "status") {
+		t.Errorf("Response status not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains(int64(11), "response", "length") {
+		t.Errorf("Response length not found: %s", logHandler.All())
 	}
 }
 
@@ -149,10 +200,8 @@ func TestMiddlewareSpanEventing(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://example.com", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
-	if !slices.ContainsFunc(logHandler.All(), func(e map[string]any) bool {
-		return e["msg"] == "span test span event test event"
-	}) {
-		t.Error("Span event not logged")
+	if !logHandler.Contains("span test span event test event", slog.MessageKey) {
+		t.Errorf("Span event not found: %s", logHandler.All())
 	}
 }
 
@@ -172,10 +221,8 @@ func TestMiddlewarePanic(t *testing.T) {
 	req.Header.Add("X-Strc-Span-Id", "VIPEcES.yuufaHI")
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
-	if !slices.ContainsFunc(logHandler.All(), func(e map[string]any) bool {
-		return e["msg"] == "panic: test panic"
-	}) {
-		t.Error("Log message not found")
+	if !logHandler.Contains("panic: test panic", slog.MessageKey) {
+		t.Errorf("Panic event not found: %s", logHandler.All())
 	}
 }
 
@@ -208,10 +255,12 @@ func TestMiddlewarePairs(t *testing.T) {
 	req.Header.Add(pair.HeaderName, "VIPEcES")
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 
-	if !slices.ContainsFunc(logHandler.All(), func(e map[string]any) bool {
-		return e["msg"] == "Test log" && e["request_id"] == "VIPEcES"
-	}) {
-		t.Error("Log message not found")
+	if !logHandler.Contains("Test log", slog.MessageKey) {
+		t.Errorf("Message not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("VIPEcES", "request_id") {
+		t.Errorf("Request ID not found: %s", logHandler.All())
 	}
 }
 
