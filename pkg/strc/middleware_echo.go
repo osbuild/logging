@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	echoproxy "github.com/osbuild/logging/pkg/echo"
 )
 
 func NewEchoV4MiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) echo.MiddlewareFunc {
@@ -33,10 +34,12 @@ func NewEchoV4MiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig)
 				},
 			}
 
+			// Set per-request logger to the default slog instance with context
+			c.SetLogger(echoproxy.NewProxyWithContextFor(slog.Default(), c.Request().Context()))
+
 			m.before()
 			defer m.after()
 
-			// XXX bug
 			c.Response().Writer = m.bw
 
 			err := next(c)
