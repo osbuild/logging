@@ -32,23 +32,21 @@ var pairs = []strc.HeadfieldPair{
 }
 
 func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
-	m1 := strc.NewEchoV4MiddlewareWithConfig(logger, strc.MiddlewareConfig{})
-	m2 := strc.NewMiddlewareWithConfig(logger, strc.MiddlewareConfig{
-		WithUserAgent:      true,
-		WithRequestBody:    true,
-		WithRequestHeader:  true,
-		WithResponseBody:   true,
-		WithResponseHeader: true,
-		Filters:            []strc.Filter{strc.IgnorePathPrefix("/metrics")},
-	})
-	m3 := strc.HeadfieldPairMiddleware(pairs)
+	tracerMW := strc.EchoTracer(strc.MiddlewareConfig{})
+	loggerMW := strc.EchoRequestLogger(logger, strc.MiddlewareConfig{})
+	setLoggerMW := strc.EchoContextSetLogger(logger)
+	headfieldMW := strc.HeadfieldPairMiddleware(pairs)
 
 	s1 := echo.New()
 	s1.HideBanner = true
 	s1.HidePort = true
 	s1.Logger = echoproxy.NewProxyFor(logger)
-	s1.Use(m1)
-	s1.Use(echo.WrapMiddleware(m3))
+	s1.Use(
+		tracerMW,
+		loggerMW,
+		setLoggerMW,
+		echo.WrapMiddleware(headfieldMW),
+	)
 	s1.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.SetLogger(echoproxy.NewProxyWithContextFor(logger, c.Request().Context()))
@@ -76,7 +74,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 	s2 := echo.New()
 	s2.HideBanner = true
 	s2.HidePort = true
-	s2.Use(m1)
+	s2.Use(loggerMW)
 	s2.GET("/", func(c echo.Context) error {
 		span, ctx := strc.Start(c.Request().Context(), "s2")
 		defer span.End()
@@ -99,7 +97,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 
 		subProcess(ctx)
 	})
-	mux3.Handle("/", m2(h3))
+	mux3.Handle("/", headfieldMW(h3))
 	go srv3.ListenAndServe()
 
 	return s1, s2, srv3
