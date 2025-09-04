@@ -122,7 +122,6 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 
 			if !m.before() {
 				// request is not being handled by this middleware
-				next.ServeHTTP(m.bw, m.r)
 				return
 			}
 			defer m.after()
