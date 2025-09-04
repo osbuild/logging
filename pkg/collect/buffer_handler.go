@@ -186,6 +186,14 @@ func (h *CollectorHandler) All() []map[string]any {
 	return h.data.fields
 }
 
+// Count returns number of all entries that were logged.
+func (h *CollectorHandler) Count() int {
+	h.data.mu.RLock()
+	defer h.data.mu.RUnlock()
+
+	return len(h.data.fields)
+}
+
 // Can be replaced by slices.SortedKeys after Go 1.23+ upgrade
 func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
 	keys := make([]K, len(m))

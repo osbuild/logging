@@ -37,14 +37,7 @@ func TestMiddlewareGenerateContext(t *testing.T) {
 func TestMiddlewareFilter(t *testing.T) {
 	logHandler := collect.NewTestHandler(slog.LevelDebug, false, false, false)
 
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		if strc.TraceIDFromContext(ctx) != strc.EmptyTraceID {
-			t.Error("TraceID not set in context")
-		}
-	})
-
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	middleware := strc.NewMiddlewareWithConfig(slog.New(logHandler), strc.MiddlewareConfig{
 		Filters: []strc.Filter{strc.IgnorePathPrefix("/metrics")},
 	})
@@ -52,6 +45,9 @@ func TestMiddlewareFilter(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "http://example.com/metrics", nil)
 	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
+	if logHandler.Count() != 0 {
+		t.Errorf("Log entries found, expected none: %s", logHandler.All())
+	}
 }
 
 func TestMiddlewareParseContext(t *testing.T) {
