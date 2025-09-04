@@ -32,23 +32,15 @@ var pairs = []strc.HeadfieldPair{
 }
 
 func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
-	m1 := strc.NewEchoV4MiddlewareWithConfig(logger, strc.MiddlewareConfig{})
-	m2 := strc.NewMiddlewareWithConfig(logger, strc.MiddlewareConfig{
-		WithUserAgent:      true,
-		WithRequestBody:    true,
-		WithRequestHeader:  true,
-		WithResponseBody:   true,
-		WithResponseHeader: true,
-		Filters:            []strc.Filter{strc.IgnorePathPrefix("/metrics")},
-	})
-	m3 := strc.HeadfieldPairMiddleware(pairs)
+	m1 := strc.EchoRequestLogger(logger, strc.MiddlewareConfig{})
+	m2 := strc.HeadfieldPairMiddleware(pairs)
 
 	s1 := echo.New()
 	s1.HideBanner = true
 	s1.HidePort = true
 	s1.Logger = echoproxy.NewProxyFor(logger)
 	s1.Use(m1)
-	s1.Use(echo.WrapMiddleware(m3))
+	s1.Use(echo.WrapMiddleware(m2))
 	s1.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.SetLogger(echoproxy.NewProxyWithContextFor(logger, c.Request().Context()))
