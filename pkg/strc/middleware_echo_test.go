@@ -134,7 +134,7 @@ func TestEchoMiddlewareFilter(t *testing.T) {
 	if logHandler.Count() != 0 {
 		t.Errorf("Log entries found, expected none: %s", logHandler.All())
 	}
-	
+
 	if rec.Body != nil && rec.Body.String() != "metrics" {
 		t.Errorf("Response body not as expected: %s", rec.Body.String())
 	}
