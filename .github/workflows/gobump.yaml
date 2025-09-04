@@ -16,3 +16,4 @@ jobs:
         with:
           go_version: "1.22.1"
           token: ${{ secrets.GITHUB_TOKEN }}
+          exec_pr: ./tools/prepare-source.sh
