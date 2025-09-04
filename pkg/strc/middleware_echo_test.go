@@ -113,3 +113,25 @@ func TestEchoMiddlewareErrorLogging(t *testing.T) {
 		t.Error("Log message not found")
 	}
 }
+
+func TestEchoMiddlewareFilter(t *testing.T) {
+	logHandler := collect.NewTestHandler(slog.LevelDebug, false, false, false)
+	logger := slog.New(logHandler)
+
+	e := echo.New()
+	e.Use(strc.NewEchoV4MiddlewareWithConfig(logger, strc.MiddlewareConfig{
+		Filters: []strc.Filter{strc.IgnorePathPrefix("/metrics")},
+	}))
+	e.GET("/metrics", func(c echo.Context) error {
+		return c.String(http.StatusOK, "metrics")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/metrics", nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	if logHandler.Count() != 0 {
+		t.Errorf("Log entries found, expected none: %s", logHandler.All())
+	}
+}

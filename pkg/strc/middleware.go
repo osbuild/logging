@@ -120,7 +120,11 @@ func NewMiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig) func(
 				},
 			}
 
-			m.before()
+			if !m.before() {
+				// request is not being handled by this middleware
+				next.ServeHTTP(m.bw, m.r)
+				return
+			}
 			defer m.after()
 
 			next.ServeHTTP(m.bw, m.r)
@@ -153,7 +157,9 @@ type middleware struct {
 	message  any
 }
 
-func (m *middleware) before() {
+// before performs actions before the request is handled.
+// Returns false if the request should not be handled.
+func (m *middleware) before() bool {
 	m.start = time.Now()
 	m.path = m.r.URL.Path
 	m.method = m.r.Method
@@ -172,7 +178,7 @@ func (m *middleware) before() {
 	for _, filter := range m.config.Filters {
 		if !filter(m.bw, m.r) {
 			m.callFunc(m.bw, m.r)
-			return
+			return false
 		}
 	}
 
@@ -192,6 +198,8 @@ func (m *middleware) before() {
 		ctx = WithSpanID(ctx, m.spanID)
 		m.r = m.r.WithContext(ctx)
 	}
+
+	return true
 }
 
 func (m *middleware) after() {
