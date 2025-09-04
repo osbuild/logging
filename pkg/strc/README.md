@@ -65,23 +65,17 @@ id := TraceIDFromRequest(request)
 
 ### Middleware
 
-A standard library HTTP middleware is provided for trace propagation
+The library provides native Echo middleware:
 
 ```go
-middleware := strc.NewMiddleware(logger)
-mux := http.NewServeMux()
-mux.Handle("/", middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// ...
-})))
+e.Use(strc.EchoRequestLogger(logger, strc.MiddlewareConfig{}))
 ```
 
-The library does not provide native Echo middleware, but a standard middleware can be easily used from Echo:
+`EchoContextSetLogger` can be used to set the logger per request.
 
-```go
-e.Use(strc.NewEchoV4MiddlewareWithConfig(logger, strc.MiddlewareConfig{}))
-```
-
-Note: Do not use `echo.WrapMiddleware` as it ignores errors which echo middleware and handlers may return.
+`EchoTracer` can be used to add trace and span IDs to each request context. The span ID needs to be
+set in the request context, but the trace ID has a fallback where it will be generated if not
+present in the request headers.
 
 See `strc.MiddlewareConfig` for more info about configuration.
 
