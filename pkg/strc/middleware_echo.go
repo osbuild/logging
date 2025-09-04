@@ -39,7 +39,7 @@ func NewEchoV4MiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig)
 
 			if !m.before() {
 				// request is not being handled by this middleware
-				return next(c)
+				return nil
 			}
 			defer m.after()
 

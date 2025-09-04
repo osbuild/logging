@@ -37,16 +37,25 @@ func TestMiddlewareGenerateContext(t *testing.T) {
 func TestMiddlewareFilter(t *testing.T) {
 	logHandler := collect.NewTestHandler(slog.LevelDebug, false, false, false)
 
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
 	middleware := strc.NewMiddlewareWithConfig(slog.New(logHandler), strc.MiddlewareConfig{
 		Filters: []strc.Filter{strc.IgnorePathPrefix("/metrics")},
 	})
 	handlerToTest := middleware(nextHandler)
 
 	req := httptest.NewRequest("GET", "http://example.com/metrics", nil)
-	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
+	rec := httptest.NewRecorder()
+	handlerToTest.ServeHTTP(rec, req)
+
 	if logHandler.Count() != 0 {
 		t.Errorf("Log entries found, expected none: %s", logHandler.All())
+	}
+	
+	if rec.Body != nil && rec.Body.String() != "ok" {
+		t.Errorf("Response body not as expected: %s", rec.Body.String())
 	}
 }
 
