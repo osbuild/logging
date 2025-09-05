@@ -32,7 +32,7 @@ var pairs = []strc.HeadfieldPair{
 }
 
 func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
-	tracerMW := strc.EchoTracer(strc.MiddlewareConfig{})
+	tracerMW := strc.EchoTracer()
 	loggerMW := strc.EchoRequestLogger(logger, strc.MiddlewareConfig{})
 	setLoggerMW := strc.EchoContextSetLogger(logger)
 	headfieldMW := strc.HeadfieldPairMiddleware(pairs)
