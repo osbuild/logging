@@ -26,12 +26,6 @@ func httpRequestWithTracing(r *http.Request) (TraceID, *http.Request) {
 func EchoTracer(config MiddlewareConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			for _, filter := range config.Filters {
-				if !filter(nil, c.Request()) {
-					return next(c)
-				}
-			}
-
 			traceID, req := httpRequestWithTracing(c.Request())
 			c.SetRequest(req)
 
