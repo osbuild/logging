@@ -58,12 +58,6 @@ func statusForLogging(status int, err error) int {
 func EchoRequestLogger(logger *slog.Logger, config MiddlewareConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			for _, filter := range config.Filters {
-				if !filter(nil, c.Request()) {
-					return next(c)
-				}
-			}
-
 			start := time.Now()
 			err := next(c)
 			latency := time.Since(start)

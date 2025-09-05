@@ -62,7 +62,4 @@ type MiddlewareConfig struct {
 
 	// NoExtractTraceID disables extracting trace id from incoming requests. Defaults to false.
 	NoTraceContext bool
-
-	// Filters is a list of filters to apply before logging. Optional.
-	Filters []Filter
 }

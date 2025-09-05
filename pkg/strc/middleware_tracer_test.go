@@ -18,7 +18,7 @@ func TestEchoTracer(t *testing.T) {
 	logger := slog.New(logHandler)
 	e := echo.New()
 
-	e.Use(strc.EchoTracer(strc.MiddlewareConfig{}))
+	e.Use(strc.EchoTracer())
 	e.Use(strc.EchoRequestLogger(logger, strc.MiddlewareConfig{}))
 
 	var traceID string
