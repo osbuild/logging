@@ -1,15 +1,15 @@
 ---
     name: checks
-    
+
     on:
       push:
         branches:
           - main
       pull_request:
-    
+
     env:
-      GO_SVR: 1.21.0
-    
+      GO_SVR: 1.22.1
+
     jobs:
       commit:
         name: "💬 Commit checks"
@@ -28,9 +28,7 @@
           - run: |
               python -m rhenvision_changelog commit-check || echo "::warning ::Commit message is not formatted correctly"
             working-directory: code
-          - uses: actions/checkout@v3
-          - uses: actions/setup-python@v3
-    
+
       tests:
         name: "🏫 Go lint and tests"
         runs-on: ubuntu-latest
@@ -39,9 +37,19 @@
           - uses: actions/setup-go@v4
             with:
               go-version: ${{ env.GO_SVR }}
+          - name: Check that source has been prepared
+            run: |
+              ./tools/prepare-source.sh
+              if [ -n "$(git status --porcelain)" ]; then
+                echo
+                echo "Please include these changes in your branch: "
+                git status -vv
+                exit "1"
+              else
+                exit "0"
+              fi
           - uses: dominikh/staticcheck-action@v1
             with:
               version: "latest"
           - run: |
               make unit-tests run-examples
-    
