@@ -31,7 +31,7 @@ var pairs = []strc.HeadfieldPair{
 	{HeaderName: "X-Request-Id", FieldName: "request_id"},
 }
 
-func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
+func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 	tracerMW := strc.EchoTracer()
 	loggerMW := strc.EchoRequestLogger(logger, strc.MiddlewareConfig{})
 	setLoggerMW := strc.EchoContextSetLogger(logger)
@@ -43,16 +43,10 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 	s1.Logger = echoproxy.NewProxyFor(logger)
 	s1.Use(
 		tracerMW,
-		loggerMW,
-		setLoggerMW,
 		echo.WrapMiddleware(headfieldMW),
+		setLoggerMW,
+		loggerMW,
 	)
-	s1.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.SetLogger(echoproxy.NewProxyWithContextFor(logger, c.Request().Context()))
-			return next(c)
-		}
-	})
 	s1.GET("/", func(c echo.Context) error {
 		span, ctx := strc.Start(c.Request().Context(), "s1")
 		defer span.End()
@@ -62,48 +56,37 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo, *http.Server) {
 		slog.DebugContext(ctx, "slog msg", "service", "s1")
 		logrus.WithContext(ctx).WithField("service", "s1").Debug("logrus msg")
 		c.Logger().Debug("echo msg 1")
-		c.Logger().Debugj(map[string]interface{}{"service": "s1", "msg": "echo msg 2"})
+		c.Logger().Debugj(map[string]any{"service": "s1", "msg": "echo msg 2"})
 
 		r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8132/", nil)
 		doer := strc.NewTracingDoer(http.DefaultClient)
 		doer.Do(r)
-		return nil
+		return c.String(200, "ok")
 	})
 	go s1.Start(":8131")
 
 	s2 := echo.New()
 	s2.HideBanner = true
 	s2.HidePort = true
-	s2.Use(loggerMW)
+	s2.Use(
+		tracerMW,
+		echo.WrapMiddleware(headfieldMW),
+		setLoggerMW,
+		loggerMW,
+	)
 	s2.GET("/", func(c echo.Context) error {
 		span, ctx := strc.Start(c.Request().Context(), "s2")
 		defer span.End()
 
-		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8133/", nil)
-		doer := strc.NewTracingDoer(http.DefaultClient)
-		doer.Do(req)
-		return nil
+		subProcess(ctx)
+		return c.String(200, "ok")
 	})
 	go s2.Start(":8132")
 
-	mux3 := http.NewServeMux()
-	srv3 := &http.Server{
-		Addr:    ":8133",
-		Handler: mux3,
-	}
-	h3 := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		span, ctx := strc.Start(r.Context(), "s3")
-		defer span.End()
-
-		subProcess(ctx)
-	})
-	mux3.Handle("/", headfieldMW(h3))
-	go srv3.ListenAndServe()
-
-	return s1, s2, srv3
+	return s1, s2
 }
 
-func main() {
+func request(req *http.Request) {
 	h := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: cleaner})
 	logger := slog.New(strc.NewMultiHandlerCustom(nil, strc.HeadfieldPairCallback(pairs), h))
 	slog.SetDefault(logger)
@@ -111,13 +94,16 @@ func main() {
 	strc.SkipSource = true // for better readability
 	logrus.SetDefault(logrus.NewProxyFor(logger, logrus.Options{NoExit: true}))
 
-	s1, s2, s3 := startServers(logger)
+	s1, s2 := startServers(logger)
 	defer s1.Close()
 	defer s2.Close()
-	defer s3.Close()
 
 	client := http.Client{}
-	req, _ := http.NewRequest("GET", "http://localhost:8131/", nil)
 	req.Header.Add("X-Request-Id", "abcdef")
 	client.Do(req)
+}
+
+func main() {
+	req, _ := http.NewRequest("GET", "http://localhost:8131/", nil)
+	request(req)
 }
