@@ -13,12 +13,12 @@ import (
 	"github.com/osbuild/logging/pkg/strc"
 )
 
-func TestEchoTracer(t *testing.T) {
+func TestEchoTraceExtractor(t *testing.T) {
 	logHandler := collect.NewTestHandler(slog.LevelDebug, false, false, false)
 	logger := slog.New(logHandler)
 	e := echo.New()
 
-	e.Use(strc.EchoTracer())
+	e.Use(strc.EchoTraceExtractor())
 	e.Use(strc.EchoRequestLogger(logger, strc.MiddlewareConfig{}))
 
 	var traceID string

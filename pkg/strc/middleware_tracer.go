@@ -23,11 +23,11 @@ func httpRequestWithTracing(r *http.Request) (TraceID, *http.Request) {
 	return traceID, r
 }
 
-// This extracts trace IDs and span IDs from HTTP headers and sets them
-// in the request context.
+// EchoTraceExtractor extracts trace IDs and span IDs from HTTP headers and sets
+// them in the request context.
 //
 // Meant to be chained before any logging middleware.
-func EchoTracer() echo.MiddlewareFunc {
+func EchoTraceExtractor() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			traceID, req := httpRequestWithTracing(c.Request())

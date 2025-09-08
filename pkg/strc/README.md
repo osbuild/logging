@@ -73,9 +73,9 @@ e.Use(strc.EchoRequestLogger(logger, strc.MiddlewareConfig{}))
 
 `EchoContextSetLogger` can be used to set the logger per request.
 
-`EchoTracer` can be used to add trace and span IDs to each request context. The span ID needs to be
-set in the request context, but the trace ID has a fallback where it will be generated if not
-present in the request headers.
+`EchoTraceExtractor` can be used to add trace and span IDs to each request
+context. The span ID needs to be set in the request context, but the trace ID
+has a fallback where it will be generated if not present in the request headers.
 
 See `strc.MiddlewareConfig` for more info about configuration.
 
