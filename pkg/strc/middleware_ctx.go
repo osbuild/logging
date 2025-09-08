@@ -39,10 +39,3 @@ func HeadfieldPairCallback(pairs []HeadfieldPair) MultiCallback {
 		return a, nil
 	}
 }
-
-func FetchValueContext(ctx context.Context, p HeadfieldPair) string {
-	if value := ctx.Value(p); value != nil {
-		return value.(string)
-	}
-	return ""
-}
