@@ -12,6 +12,32 @@ import (
 	"github.com/osbuild/logging/pkg/strc"
 )
 
+func TestEchoMiddlewareLogger(t *testing.T) {
+	logHandler := collect.NewTestHandler(slog.LevelDebug, false, false, false)
+	logger := slog.New(logHandler)
+
+	e := echo.New()
+	e.Use(strc.NewEchoV4MiddlewareWithConfig(logger, strc.MiddlewareConfig{}))
+	e.GET("/x", func(c echo.Context) error {
+		c.Logger().Debug("echo logger test")
+		c.Logger().Debugj(map[string]any{"test": "json"})
+		return c.String(http.StatusAccepted, "OK")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/x", nil)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	if !logHandler.Contains("echo logger test", slog.MessageKey) {
+		t.Errorf("Message not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("json", "test") {
+		t.Errorf("JSON field not found: %s", logHandler.All())
+	}
+}
+
 func TestEchoMiddlewareLogging(t *testing.T) {
 	logHandler := collect.NewTestHandler(slog.LevelDebug, false, false, false)
 	logger := slog.New(logHandler)
@@ -134,7 +160,7 @@ func TestEchoMiddlewareFilter(t *testing.T) {
 	if logHandler.Count() != 0 {
 		t.Errorf("Log entries found, expected none: %s", logHandler.All())
 	}
-	
+
 	if rec.Body != nil && rec.Body.String() != "metrics" {
 		t.Errorf("Response body not as expected: %s", rec.Body.String())
 	}

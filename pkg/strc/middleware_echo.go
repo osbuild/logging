@@ -34,14 +34,17 @@ func NewEchoV4MiddlewareWithConfig(logger *slog.Logger, config MiddlewareConfig)
 				},
 			}
 
-			// Set per-request logger to the default slog instance with context
-			c.SetLogger(echoproxy.NewProxyWithContextFor(slog.Default(), c.Request().Context()))
-
 			if !m.before() {
 				// request is not being handled by this middleware
 				return nil
 			}
 			defer m.after()
+
+			// Set the modified context to echo context
+			c.SetRequest(m.r)
+
+			// Set per-request logger to the default slog instance with context
+			c.SetLogger(echoproxy.NewProxyWithContextFor(logger, c.Request().Context()))
 
 			c.Response().Writer = m.bw
 
