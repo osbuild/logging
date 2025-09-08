@@ -254,6 +254,48 @@ func (h *CollectorHandler) Contains(expected any, names ...string) bool {
 	return false
 }
 
+// CountWith counts how many records contain the provided nested names. It supports nested
+// maps of fields (slog groups).
+func (h *CollectorHandler) CountWith(names ...string) int {
+	h.data.mu.RLock()
+	defer h.data.mu.RUnlock()
+
+	if len(names) == 0 {
+		panic("at least one name must be provided")
+	}
+
+	count := 0
+	for _, record := range h.data.fields {
+		_, found := h.findNested(record, names)
+		if found {
+			count++
+		}
+	}
+
+	return count
+}
+
+// CollectWith collects values for the provided nested names. It supports nested
+// maps of fields (slog groups).
+func (h *CollectorHandler) CollectWith(names ...string) []any {
+	h.data.mu.RLock()
+	defer h.data.mu.RUnlock()
+
+	if len(names) == 0 {
+		panic("at least one name must be provided")
+	}
+
+	var values []any
+	for _, record := range h.data.fields {
+		value, found := h.findNested(record, names)
+		if found {
+			values = append(values, value)
+		}
+	}
+
+	return values
+}
+
 func (h *CollectorHandler) findNested(data map[string]any, names []string) (any, bool) {
 	current, ok := data[names[0]]
 	if !ok {

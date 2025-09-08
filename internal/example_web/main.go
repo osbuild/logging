@@ -86,9 +86,8 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 	return s1, s2
 }
 
-func request(req *http.Request) {
-	h := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: cleaner})
-	logger := slog.New(strc.NewMultiHandlerCustom(nil, strc.HeadfieldPairCallback(pairs), h))
+func request(req *http.Request, handler slog.Handler) {
+	logger := slog.New(strc.NewMultiHandlerCustom(nil, strc.HeadfieldPairCallback(pairs), handler))
 	slog.SetDefault(logger)
 	strc.SetLogger(logger)
 	strc.SkipSource = true // for better readability
@@ -104,6 +103,7 @@ func request(req *http.Request) {
 }
 
 func main() {
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: cleaner})
 	req, _ := http.NewRequest("GET", "http://localhost:8131/", nil)
-	request(req)
+	request(req, handler)
 }
