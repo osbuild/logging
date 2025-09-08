@@ -115,3 +115,34 @@ func TestEchoRequestLoggerError(t *testing.T) {
 	assert.True(t, logHandler.Contains(int64(0), "response", "length"))
 	assert.True(t, logHandler.Contains(slog.LevelError.String(), "level"))
 }
+
+func TestEchoContextSetLogger(t *testing.T) {
+	logHandler := collect.NewTestHandler(slog.LevelDebug, false, false, false)
+	logger := slog.New(strc.NewMultiHandler(logHandler))
+
+	e := echo.New()
+	e.Use(strc.EchoTraceExtractor(), strc.EchoContextSetLogger(logger))
+	e.GET("/x", func(c echo.Context) error {
+		c.Logger().Debug("echo logger test")
+		c.Logger().Debugj(map[string]any{"test": "json"})
+		return c.String(http.StatusAccepted, "OK")
+	})
+
+	trace_id := "1zapXiHprrrvHqD"
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/x", nil)
+	req.Header.Add("X-Strc-Trace-Id", trace_id)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if !logHandler.Contains("echo logger test", slog.MessageKey) {
+		t.Errorf("Message not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains("json", "test") {
+		t.Errorf("JSON field not found: %s", logHandler.All())
+	}
+
+	if !logHandler.Contains(trace_id, "trace_id") {
+		t.Errorf("TraceID not found: %s", logHandler.All())
+	}
+}
