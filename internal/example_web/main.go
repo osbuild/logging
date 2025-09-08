@@ -27,7 +27,7 @@ func subProcess(ctx context.Context) {
 	span.Event("an event")
 }
 
-var pairs = []strc.HeadfieldPair{
+var pairs = []strc.HeaderField{
 	{HeaderName: "X-Request-Id", FieldName: "request_id"},
 }
 
@@ -35,7 +35,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 	tracerMW := strc.EchoTraceExtractor()
 	loggerMW := strc.EchoRequestLogger(logger, strc.MiddlewareConfig{})
 	setLoggerMW := strc.EchoContextSetLogger(logger)
-	headfieldMW := strc.HeadfieldPairMiddleware(pairs)
+	headfieldMW := strc.EchoHeadersExtractor(pairs)
 
 	s1 := echo.New()
 	s1.HideBanner = true
@@ -43,7 +43,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 	s1.Logger = echoproxy.NewProxyFor(logger)
 	s1.Use(
 		tracerMW,
-		echo.WrapMiddleware(headfieldMW),
+		headfieldMW,
 		setLoggerMW,
 		loggerMW,
 	)
@@ -70,7 +70,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 	s2.HidePort = true
 	s2.Use(
 		tracerMW,
-		echo.WrapMiddleware(headfieldMW),
+		headfieldMW,
 		setLoggerMW,
 		loggerMW,
 	)
@@ -87,7 +87,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 }
 
 func request(req *http.Request, handler slog.Handler) {
-	logger := slog.New(strc.NewMultiHandlerCustom(nil, strc.HeadfieldPairCallback(pairs), handler))
+	logger := slog.New(strc.NewMultiHandlerCustom(nil, strc.HeadersCallback(pairs), handler))
 	slog.SetDefault(logger)
 	strc.SetLogger(logger)
 	strc.SkipSource = true // for better readability
