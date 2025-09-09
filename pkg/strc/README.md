@@ -65,17 +65,18 @@ id := TraceIDFromRequest(request)
 
 ### Middleware
 
-The library provides native Echo middleware:
+The library provides native Echo middleware functions:
 
 ```go
 e.Use(strc.EchoRequestLogger(logger, strc.MiddlewareConfig{}))
 ```
 
-`EchoContextSetLogger` can be used to set the logger per request.
+Available Echo middleware in the preferred order of call:
 
-`EchoTraceExtractor` can be used to add trace and span IDs to each request
-context. The span ID needs to be set in the request context, but the trace ID
-has a fallback where it will be generated if not present in the request headers.
+* `EchoTraceExtractor` extracts `X-Strc-Trace-Id` (and span) headers and stores them in the context. When no trace id is available, a random one is created.
+* `EchoContextSetLogger`: overrides the default Echo logger with per-request instance which captures context from the request. This means all logs created via Echo library will be forwarded into `slog` with values from context.
+* `EchoHeadersExtractor` extracts custom HTTP headers and stores them in the context. Can be appended to all logs via handler callback, useful for external correlation fields like `request_id` or `edge_id`.
+* `EchoRequestLogger`: creates a log record for every single HTTP request with configurable log level.
 
 See `strc.MiddlewareConfig` for more info about configuration.
 
