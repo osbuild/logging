@@ -42,6 +42,16 @@ Spans end up in log sink too, for better readability, the following fields are a
 * `trace_id` - trace ID (disable by setting `strc.TraceIDFieldKey` to empty string)
 * `build_id` - build Git sha (disable by setting `strc.BuildIDFieldKey` to empty string)
 
+### Overriding time
+
+Span start, event and end time is automatically taken via `time.Now()` call but there are some use cases when this needs to be overridden to a specific time. Use special attributes to do that:
+
+```go
+span := strc.Start(ctx, "span name", "started", time.Now())
+span.Event("an event", "at", time.Now())
+span.End("finished", time.Now())
+```
+
 ### Propagation
 
 A simple HTTP header-based propagation API is available. Note this is not meant to be used directly, there is HTTP middleware and client wrapper available:

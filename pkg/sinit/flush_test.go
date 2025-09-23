@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 )
- //nolint:errcheck
- func TestValidationSplunkFlushRacy(t *testing.T) {
+
+//nolint:errcheck
+func TestValidationSplunkFlushRacy(t *testing.T) {
 	ctx := context.Background()
 	cfg := LoggingConfig{
 		SplunkConfig: SplunkConfig{

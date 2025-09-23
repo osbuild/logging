@@ -77,6 +77,8 @@ type Span struct {
 //
 // It immediately logs a message with the span name, span information in SpanGroupName and optional
 // arguments.
+//
+// Special argument named "started" of type time.Time can be used to set the start time of the span.
 func Start(ctx context.Context, name string, args ...any) (*Span, context.Context) {
 	return tracer.Load().Start(ctx, name, args...)
 }
@@ -92,6 +94,11 @@ func (t *Tracer) Start(ctx context.Context, name string, args ...any) (*Span, co
 	sid := NewSpanID(ctx)
 	ctx = WithSpanID(ctx, sid)
 
+	started := time.Now()
+	if p := findArgs[time.Time](args, "started"); p != nil {
+		started = *p
+	}
+
 	span := &Span{
 		ctx:     ctx,
 		tracer:  t,
@@ -99,7 +106,7 @@ func (t *Tracer) Start(ctx context.Context, name string, args ...any) (*Span, co
 		tid:     tid,
 		sid:     sid,
 		args:    args,
-		started: time.Now(),
+		started: started,
 	}
 
 	if !t.logger.Enabled(ctx, Level) {
@@ -135,9 +142,16 @@ func (t *Tracer) Start(ctx context.Context, name string, args ...any) (*Span, co
 //
 // It immediately logs a message with the span name, span information in SpanGroupName and
 // optional arguments.
+//
+// Special argument named "at" of type time.Time can be used to set the event time.
 func (s *Span) Event(name string, args ...any) {
 	if !s.tracer.logger.Enabled(s.ctx, Level) {
 		return
+	}
+
+	at := time.Now()
+	if p := findArgs[time.Time](args, "at"); p != nil {
+		at = *p
 	}
 
 	// keep the order and capacity correct
@@ -148,7 +162,7 @@ func (s *Span) Event(name string, args ...any) {
 		slog.String(ParentIDName, s.sid.ParentID()),
 		slog.String(TraceIDName, s.tid.String()),
 		slog.String("event", name),
-		slog.Duration("at", time.Since(s.started)),
+		slog.Duration("at", at.Sub(s.started)),
 	)
 
 	if !SkipSource {
@@ -170,11 +184,18 @@ func (s *Span) Event(name string, args ...any) {
 //
 // It immediately logs a message with the span name, span information in SpanGroupName and
 // optional arguments.
+//
+// Special argument named "finished" of type time.Time can be used to set the finish time of the span.
 func (s *Span) End(args ...any) {
 	if !s.tracer.logger.Enabled(s.ctx, Level) {
 		return
 	}
-	dur := time.Since(s.started)
+
+	finished := time.Now()
+	if p := findArgs[time.Time](args, "finished"); p != nil {
+		finished = *p
+	}
+	dur := finished.Sub(s.started)
 
 	// keep the order and capacity correct
 	attrs := make([]slog.Attr, 0, 5+1)
@@ -200,6 +221,11 @@ func (s *Span) End(args ...any) {
 	logger.LogAttrs(s.ctx, Level, fmt.Sprintf("span %s finished in %v", s.name, dur), attrs...)
 }
 
+// TraceID returns the trace ID of the span.
+func (s *Span) TraceID() TraceID {
+	return s.tid
+}
+
 func callerPtr(skip int) string {
 	_, file, line, ok := runtime.Caller(skip)
 	if !ok {
@@ -207,4 +233,27 @@ func callerPtr(skip int) string {
 	}
 
 	return file + ":" + fmt.Sprint(line)
+}
+
+func findArgs[T any](args []any, key string) *T {
+	// find the key in argument key-value pairs
+	for i := 0; i < len(args)-1; i += 2 {
+		if k, ok := args[i].(string); ok && k == key {
+			if result, ok := args[i+1].(T); ok {
+				return &result
+			}
+		}
+	}
+
+	// find the key in slog.Attrs
+	for i := range args {
+		if attr, ok := args[i].(slog.Attr); ok && attr.Key == key {
+			if result, ok := attr.Value.Any().(T); ok {
+				return &result
+			}
+		}
+	}
+
+	// not found
+	return nil
 }
