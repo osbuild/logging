@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -25,17 +24,19 @@ func decodeBody(t *testing.T, r *http.Request) map[string]any {
 }
 
 func TestSplunkLoggerRetry(t *testing.T) {
-	var internalErrorOnce sync.Once
+	var counter atomic.Int32
 	ch := make(chan bool)
 	time.AfterFunc(time.Second*8, func() {
 		ch <- false
 	})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		internalErrorOnce.Do(func() {
-			// make sure the logger retries requests
+		if counter.Load() == 0 {
+			// make sure the logger retries the request
+			counter.Add(1)
 			w.WriteHeader(http.StatusInternalServerError)
-		})
+			return
+		}
 		if r.Header.Get("Authorization") != "Splunk token" {
 			t.Errorf("got %v, want Splunk token", r.Header.Get("Authorization"))
 		}
