@@ -112,7 +112,10 @@ func TestValidationSplunkWithHostname(t *testing.T) {
 	}()
 
 	slog.Warn("foo")
-	Flush()
+	err = Flush()
+	if err != nil {
+		t.Fatalf("expected no error on flush, got %v", err)
+	}
 
 	select {
 	case splunkBody := <-ch:
@@ -156,7 +159,10 @@ func TestValidationSplunkWithoutHostname(t *testing.T) {
 	}()
 
 	slog.Warn("foo")
-	Flush()
+	err = Flush()
+	if err != nil {
+		t.Fatalf("expected no error on flush, got %v", err)
+	}
 
 	select {
 	case splunkBody := <-ch:

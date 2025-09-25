@@ -31,6 +31,7 @@ var pairs = []strc.HeaderField{
 	{HeaderName: "X-Request-Id", FieldName: "request_id"},
 }
 
+//nolint:errcheck
 func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 	tracerMW := strc.EchoTraceExtractor()
 	loggerMW := strc.EchoRequestLogger(logger, strc.MiddlewareConfig{})
@@ -86,6 +87,7 @@ func startServers(logger *slog.Logger) (*echo.Echo, *echo.Echo) {
 	return s1, s2
 }
 
+//nolint:errcheck
 func request(req *http.Request, handler slog.Handler) {
 	logger := slog.New(strc.NewMultiHandlerCustom(nil, strc.HeadersCallback(pairs), handler))
 	slog.SetDefault(logger)

@@ -77,8 +77,8 @@ func (h *SplunkHandler) Flush() {
 // logs after closing the handler will return ErrFullOrClosed. The call can
 // block but not longer than 2 seconds. Use CloseWithTimeout to specify a custom
 // timeout.
-func (h *SplunkHandler) Close() {
-	h.splunk.close(2 * time.Second)
+func (h *SplunkHandler) Close() error {
+	return h.splunk.close(2 * time.Second)
 }
 
 // CloseWithTimeout flushes all pending payloads and closes the Splunk client.
