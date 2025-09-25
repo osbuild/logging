@@ -18,7 +18,7 @@ func TestSplunkHandler(t *testing.T) {
 	emptyLines := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(r.Body)
+		_, _ = buf.ReadFrom(r.Body)
 
 		lines := strings.Split(buf.String(), "\n")
 		for _, line := range lines {
@@ -96,7 +96,10 @@ func TestSplunkHandler(t *testing.T) {
 			h := NewSplunkHandler(context.Background(), c)
 			logger := slog.New(h)
 			tt.f(logger)
-			h.Close()
+			err := h.Close()
+			if err != nil {
+				t.Error(err)
+			}
 			stats := h.Statistics()
 
 			if int(stats.EventCount) != tt.events {
@@ -118,7 +121,7 @@ func TestSplunkHandler(t *testing.T) {
 func TestSplunkHandlerBatching(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(r.Body)
+		buf.ReadFrom(r.Body) //nolint:errcheck
 
 		lines := strings.Split(buf.String(), "\n")
 		for _, line := range lines {
@@ -145,7 +148,10 @@ func TestSplunkHandlerBatching(t *testing.T) {
 	for i := 0; i < 4000; i++ {
 		logger.Debug("msg", "i", i)
 	}
-	h.Close()
+	err := h.Close()
+	if err != nil {
+		t.Error(err)
+	}
 	stats := h.Statistics()
 
 	t.Logf("events: %d, batches: %d", stats.EventCount, stats.BatchCount)

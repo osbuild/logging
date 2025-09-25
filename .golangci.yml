@@ -1,0 +1,15 @@
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - (io.Reader).Read
+        - (io.Writer).Write
+        - (io.Closer).Close
+        - (io.ReadCloser).Close
+        - (io.WriteCloser).Close
+        - (bytes.Buffer).ReadFrom
+        - (bytes.Buffer).WriteTo
+        - (net/http.ResponseWriter).Write
+        - fmt.Fprintf

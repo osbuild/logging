@@ -12,6 +12,7 @@ import (
 	"github.com/osbuild/logging/pkg/splunk"
 )
 
+//nolint:errcheck
 func main() {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		buf := new(bytes.Buffer)

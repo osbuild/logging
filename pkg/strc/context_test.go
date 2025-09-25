@@ -11,7 +11,7 @@ import (
 func TestTraceID(t *testing.T) {
 	src = rand.NewSource(0)
 	var tid TraceID
-	var r *http.Request = &http.Request{
+	r := &http.Request{
 		Header: http.Header{},
 	}
 
@@ -62,7 +62,7 @@ func TestTraceID(t *testing.T) {
 func TestSpanID(t *testing.T) {
 	src = rand.NewSource(0)
 	var sid SpanID
-	var r *http.Request = &http.Request{
+	r := &http.Request{
 		Header: http.Header{},
 	}
 

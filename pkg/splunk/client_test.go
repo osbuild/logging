@@ -64,7 +64,12 @@ func TestSplunkLoggerRetry(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sl.close(100 * time.Millisecond)
+	defer func() {
+		err := sl.close(100 * time.Millisecond)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 
 	if !<-ch {
 		t.Error("timeout")
@@ -108,7 +113,12 @@ func TestSplunkLoggerContext(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sl.close(100 * time.Millisecond)
+	defer func() {
+		err := sl.close(100 * time.Millisecond)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 
 	if !<-ch {
 		t.Error("timeout")
@@ -127,7 +137,12 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 			name: "empty",
 			f: func() error {
 				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0)
-				defer sl.close(100 * time.Millisecond)
+				defer func() {
+					err := sl.close(100 * time.Millisecond)
+					if err != nil {
+						t.Error(err)
+					}
+				}()
 				_, err := sl.event([]byte("{}\n"))
 				if err != nil {
 					return err
@@ -148,7 +163,12 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 			name: "json",
 			f: func() error {
 				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0)
-				defer sl.close(100 * time.Millisecond)
+				defer func() {
+					err := sl.close(100 * time.Millisecond)
+					if err != nil {
+						t.Error(err)
+					}
+				}()
 				_, err := sl.event([]byte(`{"a": "b"}` + "\n"))
 				if err != nil {
 					return err
