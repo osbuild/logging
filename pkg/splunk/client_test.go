@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testSendFrequency = 100 * time.Millisecond
+
 func decodeBody(t *testing.T, r *http.Request) map[string]any {
 	m := map[string]any{}
 	err := json.NewDecoder(r.Body).Decode(&m)
@@ -60,7 +62,7 @@ func TestSplunkLoggerRetry(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	sl := newSplunkLogger(context.Background(), srv.URL, "token", "source", "hostname", 0)
+	sl := newSplunkLogger(context.Background(), srv.URL, "token", "source", "hostname", 0, testSendFrequency)
 	_, err := sl.event([]byte("{}\n"))
 	if err != nil {
 		t.Error(err)
@@ -109,7 +111,7 @@ func TestSplunkLoggerContext(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
-	sl := newSplunkLogger(ctx, srv.URL, "token", "source", "hostname", 0)
+	sl := newSplunkLogger(ctx, srv.URL, "token", "source", "hostname", 0, testSendFrequency)
 	_, err := sl.event([]byte("{}\n"))
 	if err != nil {
 		t.Error(err)
@@ -137,7 +139,7 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 		{
 			name: "empty",
 			f: func() error {
-				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0)
+				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0, testSendFrequency)
 				defer func() {
 					err := sl.close(100 * time.Millisecond)
 					if err != nil {
@@ -163,7 +165,7 @@ func TestSplunkLoggerPayloads(t *testing.T) {
 		{
 			name: "json",
 			f: func() error {
-				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0)
+				sl := newSplunkLogger(context.Background(), url, "token", "source", "hostname", 0, testSendFrequency)
 				defer func() {
 					err := sl.close(100 * time.Millisecond)
 					if err != nil {
@@ -233,7 +235,7 @@ func TestSplunkLoggerCloseTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
 
-	sl := newSplunkLogger(ctx, srv.URL, "token", "source", "hostname", 0)
+	sl := newSplunkLogger(ctx, srv.URL, "token", "source", "hostname", 0, testSendFrequency)
 	_, err := sl.event([]byte("{}\n"))
 	if err != nil {
 		t.Error(err)

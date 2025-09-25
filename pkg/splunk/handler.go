@@ -59,7 +59,7 @@ type SplunkConfig struct {
 func NewSplunkHandler(ctx context.Context, config SplunkConfig) *SplunkHandler {
 	h := &SplunkHandler{
 		level:  config.Level,
-		splunk: newSplunkLogger(ctx, config.URL, config.Token, config.Source, config.Hostname, config.DefaultMaximumSize),
+		splunk: newSplunkLogger(ctx, config.URL, config.Token, config.Source, config.Hostname, config.DefaultMaximumSize, DefaultSendFrequency),
 	}
 
 	h.jh = slog.NewJSONHandler(h, &slog.HandlerOptions{Level: config.Level, AddSource: true, ReplaceAttr: replaceAttr})
