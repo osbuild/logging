@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/gommon/log"
 )
 
-// Proxy is a proxy type for logrus.Logger
+// Proxy is a proxy type for echo.Logger
 type Proxy struct {
 	dest *slog.Logger
 	ctx  context.Context
