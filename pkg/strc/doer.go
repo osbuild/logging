@@ -104,10 +104,10 @@ func (td *TracingDoer) Do(req *http.Request) (*http.Response, error) {
 		return nil, NewDoerErr(err)
 	}
 
-	// dump request body if enabled
+	// dump response body if enabled
 	if td.config.WithResponseBody && res.Body != nil {
-		br := newBodyReader(req.Body, ResponseBodyMaxSize, td.config.WithRequestBody)
-		req.Body = br
+		br := newBodyReader(res.Body, ResponseBodyMaxSize, td.config.WithResponseBody)
+		res.Body = br
 
 		logger.WithGroup("response").With(
 			slog.Int64("length", res.ContentLength),
