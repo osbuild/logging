@@ -124,7 +124,7 @@ go run github.com/osbuild/logging/internal/example_cli/
 
 See [strc](pkg/strc) source or [package documentation](https://pkg.go.dev/github.com/osbuild/logging/pkg/strc) for more info.
 
-The generated SVG file is interactive and one can drill down the stack with a mouse click, the file needs to be opened in a new browser panel tho:
+The generated SVG file is interactive and one can drill down the stack with a mouse click, the file needs to be opened in a new browser panel though:
 
 [![Example](pkg/strc/stgraph/graph.svg)](pkg/strc/stgraph/graph.svg)
 
@@ -210,7 +210,7 @@ msg="span http client request started" span.name="http client request" span.id=c
 
 Note that the "slog msg" entry also contains `trace_id` key in the root namespace. This key is automatically added by the `MultiHandler` for all log messages for correlation purposes. It also adds `build_id` with git sha, but this was disabled for the example output for better readability as well as Go source location information. Also note `trace_id` is missing from logrus and echo proxies as the API does not support passing of context into log records. These proxies are meant as a temporary solution until all log statements are rewritten to `log/slog`.
 
-Service 2 is another echo code that is more straightforward - it simply calls service 3:
+Service 2 is another echo app that is more straightforward - it simply calls service 3:
 
 ```
 span, ctx := strc.Start(c.Request().Context(), "s2")
@@ -247,7 +247,7 @@ msg="span subProcess finished in 113.019µs" span.name=subProcess span.id=XeJUmb
 msg="span s3 finished in 1.02967ms" span.name=s3 span.id=xJmKjiw span.parent=bcoxtVq span.trace=iggIwgmkOVigBFV span.dur=1.02967ms
 ```
 
-Since the applications also have Echo middleware enabled which creates INFO level messages for each request, a detailed HTTP request/response appears in logs to and HTTP client and handler spans are concluded as well:
+Since the applications also have Echo middleware enabled which creates INFO level messages for each request, a detailed HTTP request/response appears in logs, and HTTP client and handler spans are concluded as well:
 
 ```
 msg="200: OK" request.method=GET request.host=localhost:8133 request.path=/ request.ip=[::1]:35934 request.length=0 request.body="" request.header.X-Strc-Trace-Id=[iggIwgmkOVigBFV] request.header.Accept-Encoding=[gzip] request.header.User-Agent=[Go-http-client/1.1] request.header.X-Strc-Span-Id=[buakavZ.bcoxtVq] request.user-agent=Go-http-client/1.1 response.latency=1.063409ms response.status=200 response.length=0 response.body="" trace_id=iggIwgmkOVigBFV
