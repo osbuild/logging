@@ -18,10 +18,10 @@ var SpanGroupName string = "span"
 // TraceIDName is the key name used for trace ID.
 var TraceIDName string = "trace"
 
-// SpanIDName is the key name used for trace ID.
+// SpanIDName is the key name used for span ID.
 var SpanIDName string = "id"
 
-// ParentIDName is the key name used for trace ID.
+// ParentIDName is the key name used for parent ID.
 var ParentIDName string = "parent"
 
 // SkipSource is a flag that disables source logging.
