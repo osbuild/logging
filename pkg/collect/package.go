@@ -1,2 +1,2 @@
-// Collecting log/slog handler, usefull for testing.
+// Collecting log/slog handler, useful for testing.
 package collect
