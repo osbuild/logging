@@ -102,7 +102,7 @@ func (h *SplunkHandler) Enabled(ctx context.Context, level slog.Level) bool {
 func (h *SplunkHandler) Handle(ctx context.Context, r slog.Record) error {
 	err := h.jh.Handle(ctx, r)
 
-	// Since errors are silently ignored in slog, let's make an good will attempt.
+	// Since errors are silently ignored in slog, let's make a good faith attempt.
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "splunk handler error: %v\n", err)
 	}
