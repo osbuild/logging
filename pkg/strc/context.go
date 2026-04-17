@@ -40,7 +40,7 @@ func NewTraceID() TraceID {
 	return TraceID(randString(traceLength))
 }
 
-// SpanID is a unique identifier for a trace.
+// SpanID is a unique identifier for a span.
 type SpanID string
 
 func (s SpanID) String() string {
@@ -64,7 +64,7 @@ func NewSpanID(ctx context.Context) SpanID {
 	return SpanID(SpanIDFromContext(ctx).ID() + "." + randString(spanLength))
 }
 
-// Start returns trace ID from a context. It returns EmptyTraceID if trace ID is not found.
+// TraceIDFromContext returns trace ID from a context. It returns EmptyTraceID if trace ID is not found.
 // Use NewTraceID to generate a new trace ID.
 func TraceIDFromContext(ctx context.Context) TraceID {
 	if ctx == nil {
@@ -78,7 +78,7 @@ func TraceIDFromContext(ctx context.Context) TraceID {
 	return EmptyTraceID
 }
 
-// Start returns a new context with trace ID.
+// WithTraceID returns a new context with trace ID.
 func WithTraceID(ctx context.Context, traceID TraceID) context.Context {
 	return context.WithValue(ctx, traceIDKey, traceID)
 }
@@ -101,7 +101,7 @@ func AddTraceIDHeader(ctx context.Context, req *http.Request) {
 	}
 }
 
-// Start returns span ID from a context. It returns EmptySpanID if span ID is not found.
+// SpanIDFromContext returns span ID from a context. It returns EmptySpanID if span ID is not found.
 // Use NewSpanID to generate a new span ID.
 func SpanIDFromContext(ctx context.Context) SpanID {
 	if ctx == nil {
@@ -115,12 +115,12 @@ func SpanIDFromContext(ctx context.Context) SpanID {
 	return EmptySpanID
 }
 
-// Start returns a new context with span ID.
+// WithSpanID returns a new context with span ID.
 func WithSpanID(ctx context.Context, spanID SpanID) context.Context {
 	return context.WithValue(ctx, spanIDKey, spanID)
 }
 
-// Start returns span from a context or nil if it was not found.
+// SpanFromContext returns span from a context or nil if it was not found.
 func SpanFromContext(ctx context.Context) *Span {
 	if ctx == nil {
 		return nil
@@ -133,7 +133,7 @@ func SpanFromContext(ctx context.Context) *Span {
 	return nil
 }
 
-// Start returns a new context with span.
+// WithSpan returns a new context with span.
 func WithSpan(ctx context.Context, span *Span) context.Context {
 	return context.WithValue(ctx, spanKey, span)
 }
