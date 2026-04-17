@@ -122,3 +122,32 @@ func TestMultiCustomValuesSlogtest(t *testing.T) {
 		}
 	}
 }
+
+func TestMultiTraceID(t *testing.T) {
+	ctx := strc.WithTraceID(context.Background(), strc.NewTraceID())
+
+	testMultiCallback := func(ctx context.Context, a []slog.Attr) ([]slog.Attr, error) {
+		return append(a, slog.String("callback", "value")), nil
+	}
+
+	var buf bytes.Buffer
+	hj := slog.NewJSONHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	h := strc.NewMultiHandlerCustom([]slog.Attr{slog.String("static", "value")}, testMultiCallback, hj)
+	logger := slog.New(h)
+
+	logger.DebugContext(ctx, "test")
+
+	if !strings.Contains(buf.String(), `"static":"value"`) {
+		t.Errorf("missing static attribute: %s", buf.String())
+	}
+
+	if !strings.Contains(buf.String(), `"callback":"value"`) {
+		t.Errorf("missing callback attribute: %s", buf.String())
+	}
+
+	if !strings.Contains(buf.String(), `"trace_id":`) {
+		t.Errorf("missing trace_id attribute: %s", buf.String())
+	}
+}
