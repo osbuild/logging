@@ -157,7 +157,7 @@ var (
 	res   *resources
 	resMu sync.Mutex
 
-	ErrAlreadyInitialized   = errors.New("logging already initialized, call Close clean")
+	ErrAlreadyInitialized   = errors.New("logging already initialized, call Close to clean up")
 	ErrInvalidURL           = errors.New("invalid URL")
 	ErrMissingURL           = errors.New("missing URL")
 	ErrSentryInitialization = errors.New("sentry initialization error")
