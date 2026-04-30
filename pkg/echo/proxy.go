@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 
 	"github.com/labstack/gommon/log"
 )
@@ -16,7 +17,7 @@ type Proxy struct {
 	ctx  context.Context
 }
 
-var proxy *Proxy
+var proxy atomic.Pointer[Proxy]
 
 // NewProxyWithContextFor creates a new Proxy for a particular logger with a particular context.
 func NewProxyWithContextFor(logger *slog.Logger, ctx context.Context) *Proxy {
@@ -37,11 +38,11 @@ func NewProxy() *Proxy {
 }
 
 func SetDefault(p *Proxy) {
-	proxy = p
+	proxy.Store(p)
 }
 
 func Default() *Proxy {
-	return proxy
+	return proxy.Load()
 }
 
 var _ = Logger(&Proxy{})
