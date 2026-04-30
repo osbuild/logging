@@ -3,16 +3,16 @@ module github.com/osbuild/logging
 go 1.24.12
 
 require (
-	github.com/getsentry/sentry-go v0.35.1
+	github.com/getsentry/sentry-go v0.45.1
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
-	github.com/jackc/pgx/v5 v5.7.6
-	github.com/labstack/echo/v4 v4.13.4
+	github.com/jackc/pgx/v5 v5.8.0
+	github.com/labstack/echo/v4 v4.15.1
 	github.com/labstack/gommon v0.5.0
 	github.com/lzap/cloudwatchwriter2 v1.6.0
 	github.com/samber/slog-sentry/v2 v2.10.3
 	github.com/stretchr/testify v1.11.1
-	github.com/systemd/slog-journal v0.1.1
+	github.com/systemd/slog-journal v0.1.2
 )
 
 require (
@@ -35,9 +35,9 @@ require (
 	github.com/samber/slog-common v0.21.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/crypto v0.46.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
