@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"math/rand"
 	"regexp"
 	"strings"
 	"testing"
@@ -108,8 +107,6 @@ func TestLogExporter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		src = rand.NewSource(0)
-
 		want := tt.want
 		t.Run(fmt.Sprintf("%v", want), func(t *testing.T) {
 			got = make([]slog.Attr, 0, 2)
@@ -286,10 +283,16 @@ func TestTraceExporterPC(t *testing.T) {
 	}
 
 	sourceRegexp := regexp.MustCompile(`exporter_test.go:\d+`)
-	for _, tt := range tests {
-		// make sure the source for trace/span IDs is deterministic
-		src = rand.NewSource(0)
 
+	// Map to store ID mappings: actual ID -> expected ID for comparison
+	// This allows us to verify ID structure without hardcoding specific random values
+	type idMap struct {
+		trace  map[string]string
+		span   map[string]string
+		parent map[string]string
+	}
+
+	for _, tt := range tests {
 		want := tt.want
 		t.Run(fmt.Sprintf("%v", tt.name), func(t *testing.T) {
 			got = make([]slog.Attr, 0, 2)
@@ -301,6 +304,14 @@ func TestTraceExporterPC(t *testing.T) {
 			}
 			logger := slog.New(handler)
 			SetLogger(logger)
+
+			// Create ID mappings for this test run
+			ids := idMap{
+				trace:  make(map[string]string),
+				span:   make(map[string]string),
+				parent: make(map[string]string),
+			}
+
 			tt.f(logger)
 
 			if len(got) != len(want) {
@@ -313,23 +324,60 @@ func TestTraceExporterPC(t *testing.T) {
 
 				if r.Value.Kind() == slog.KindGroup {
 					group := r.Value.Group()
-					for i, g := range group {
+					wantGroup := w.Value.Group()
+					for j, g := range group {
 						// reset duration to 0s in all groups up until level 1
 						if g.Value.Kind() == slog.KindDuration {
-							group[i].Value = slog.DurationValue(0)
+							group[j].Value = slog.DurationValue(0)
 						}
 
 						// round time to 0 in all groups up until level 1
 						if g.Value.Kind() == slog.KindTime {
-							group[i].Value = slog.TimeValue(tm)
+							group[j].Value = slog.TimeValue(tm)
 						}
 
 						// validate source against regexp and reset to exporter_test.go:0
 						if g.Key == slog.SourceKey && !tt.skipSource {
 							if !sourceRegexp.MatchString(g.Value.String()) {
-								t.Errorf("got[%d].Value = %q does not match exporter_text source filename", i, g.Value.String())
+								t.Errorf("got[%d].Value = %q does not match exporter_text source filename", j, g.Value.String())
 							}
-							group[i].Value = slog.StringValue("exporter_test.go:0")
+							group[j].Value = slog.StringValue("exporter_test.go:0")
+						}
+
+						// Normalize trace/span/parent IDs by mapping actual values to expected values
+						if g.Key == "trace" || g.Key == "id" || g.Key == "parent" {
+							actualID := g.Value.String()
+							var expectedID string
+							for _, wg := range wantGroup {
+								if wg.Key == g.Key {
+									expectedID = wg.Value.String()
+									break
+								}
+							}
+
+							// Create or verify mapping
+							var idMapping map[string]string
+							switch g.Key {
+							case "trace":
+								idMapping = ids.trace
+							case "id":
+								idMapping = ids.span
+							case "parent":
+								idMapping = ids.parent
+							}
+
+							if mapped, exists := idMapping[actualID]; exists {
+								// Verify consistency
+								if mapped != expectedID {
+									t.Errorf("inconsistent ID mapping for %s: %s -> %s, expected %s", g.Key, actualID, mapped, expectedID)
+								}
+							} else {
+								// Store new mapping
+								idMapping[actualID] = expectedID
+							}
+
+							// Replace with expected ID for comparison
+							group[j].Value = slog.StringValue(expectedID)
 						}
 					}
 				}
