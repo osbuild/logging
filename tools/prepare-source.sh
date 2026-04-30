@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-GO_MAJOR_VER=1.22
-GO_VERSION=1.22.1 # also update .github/workflows/gobump.yml
+GO_MAJOR_VER=1.24
+GO_VERSION=1.24.12 # also update .github/workflows/gobump.yml
 export GOWORK=off
 
 # Check latest Go version for the minor we're using
